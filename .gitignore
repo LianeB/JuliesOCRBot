@@ -1,0 +1,5 @@
+config.json
+cogs/__pycache__
+.idea/
+heroku-OCR-bot-creds.txt
+*.bak
