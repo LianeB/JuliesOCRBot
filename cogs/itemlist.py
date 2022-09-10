@@ -151,17 +151,16 @@ class ItemList(commands.Cog, name='Item List'):
             emoji_dict = self.client.BMAH_coll.find_one({"name": "emojis"})
 
             # check if there are items in today's items
-            emoji = self.client.get_emoji(857767128269717504)
             if len(document.keys()) == 3:
                 embed = discord.Embed(description="There are no items in today's list", color=0xca759a)
-                embed.set_author(name="Today's BMAH item list", icon_url=emoji.url)
+                embed.set_author(name="Today's BMAH item list", icon_url=ctx.guild.icon_url)
                 await ctx.send(embed=embed)
                 return
 
             now = datetime.datetime.now().strftime('%A, %B %d')
             date_suffix = date_suffix(int(datetime.datetime.now().strftime('%d')))
             embed = discord.Embed(color=0xca759a) #title=f'{emoji} BMAH item list - {now}{date_suffix}')
-            embed.set_author(name=f'BMAH item list - {now}{date_suffix}', icon_url=emoji.url) #TODO: uncomment?
+            embed.set_author(name=f'BMAH item list - {now}{date_suffix}', icon_url=ctx.guild.icon_url) #TODO: uncomment?
 
             # get dict items
             item_list = [*document] # list of dict keys
