@@ -39,8 +39,8 @@ for filename in os.listdir('./cogs'):
     if filename.endswith('.py'):
         list.append(filename)
 
-myorder = [3, 0, 1, 2] #utils (3), boosts(0), help(1), itemlist(2)
-mylist = [list[i] for i in myorder]
+#myorder = [3, 0, 1, 2] #utils (3), boosts(0), help(1), itemlist(2)
+#mylist = [list[i] for i in myorder]
 
 
 
@@ -67,18 +67,9 @@ async def reload(ctx, extension=None):
         await ctx.send(f'Reloaded **{extension}**!')
 
 
-if inDev:
-    for filename in mylist:
-        client.load_extension(f'cogs.{filename[:-3]}')
-else:
-    # for some reason when hosted the loading doesnt follow list order, so this is harcoded
-    client.load_extension('cogs.utils')
-    time.sleep(0.1)
-    client.load_extension('cogs.boosts')
-    time.sleep(0.1)
-    client.load_extension('cogs.itemlist')
-    time.sleep(0.1)
-    client.load_extension('cogs.help')
+
+for filename in list:
+    client.load_extension(f'cogs.{filename[:-3]}')
 
 
 client.run(token)
