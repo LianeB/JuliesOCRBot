@@ -9,10 +9,8 @@ attrs==20.3.0
 cachetools==4.2.2
 certifi==2020.12.5
 chardet==3.0.4
-chat-exporter==1.6.2
 click==8.0.1
 colorama==0.4.4
-discord-components==1.1.4
 discord.py==1.7.3
 distlib==0.3.1
 dnspython==2.1.0
