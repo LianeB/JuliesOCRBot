@@ -23,7 +23,7 @@ else:
 
 
 intents=discord.Intents.all()
-client = commands.Bot(command_prefix = ',', intents = intents, case_insensitive=True)
+client = commands.Bot(command_prefix = ';', intents = intents, case_insensitive=True)
 client.remove_command("help")
 
 db = cluster["JulieOCRBot"]
@@ -32,7 +32,7 @@ client.error_coll = db["errors"]
 client.active_boosts_coll = db["active_boosts"]
 client.archives_coll = db["archives"]
 client.color = 0x74d40c
-client.prefix = ','
+client.prefix = ';'
 
 # changer l'order pcq utils doit être loadé en premier
 list = []
