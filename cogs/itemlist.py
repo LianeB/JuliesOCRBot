@@ -43,7 +43,7 @@ class ItemList(commands.Cog, name='Item List'):
                     else:
                         items2 += f'‣ {item}\n'
                     counter += 1
-                embed = discord.Embed(title="Full BMAH item list", color=0xca759a)
+                embed = discord.Embed(title="Full BMAH item list", color=self.client.color)
                 embed.add_field(name=category, value=items1, inline=True)
                 embed.add_field(name="\u200b", value=items2, inline=True)
             else:
@@ -51,7 +51,7 @@ class ItemList(commands.Cog, name='Item List'):
                 item_list.sort()
                 for item in item_list:
                     items += f'‣ {item}\n'
-                embed = discord.Embed(title="Full BMAH item list", color=0xca759a, description=f'**{category}**\n{items}')
+                embed = discord.Embed(title="Full BMAH item list", color=self.client.color, description=f'**{category}**\n{items}')
 
             self.embed_dict[f'{category}'] = embed
 
@@ -152,14 +152,14 @@ class ItemList(commands.Cog, name='Item List'):
 
             # check if there are items in today's items
             if len(document.keys()) == 3:
-                embed = discord.Embed(description="There are no items in today's list", color=0xca759a)
+                embed = discord.Embed(description="There are no items in today's list", color=self.client.color)
                 embed.set_author(name="Today's BMAH item list", icon_url=ctx.guild.icon_url)
                 await ctx.send(embed=embed)
                 return
 
             now = datetime.datetime.now().strftime('%A, %B %d')
             date_suffix = date_suffix(int(datetime.datetime.now().strftime('%d')))
-            embed = discord.Embed(color=0xca759a) #title=f'{emoji} BMAH item list - {now}{date_suffix}')
+            embed = discord.Embed(color=self.client.color) #title=f'{emoji} BMAH item list - {now}{date_suffix}')
             embed.set_author(name=f'BMAH item list - {now}{date_suffix}', icon_url=ctx.guild.icon_url) #TODO: uncomment?
 
             # get dict items
@@ -306,7 +306,7 @@ class ItemList(commands.Cog, name='Item List'):
     @commands.command()
     async def db(self, ctx):
         """Shows all items in the database that are scanned for"""
-        embed = discord.Embed(title="Full BMAH item list", color=0xca759a, description="Click on the category in which you want to see the items")
+        embed = discord.Embed(title="Full BMAH item list", color=self.client.color, description="Click on the category in which you want to see the items")
 
         categories = [*self.embed_dict] # list of dict keys
         nbCategories = len(categories)
@@ -399,7 +399,7 @@ class ItemList(commands.Cog, name='Item List'):
                 else:
                     items2 += f'‣ {item}\n'
                 counter += 1
-            embed = discord.Embed(title="Full BMAH item list", color=0xca759a)
+            embed = discord.Embed(title="Full BMAH item list", color=self.client.color)
             embed.add_field(name=category_name, value=items1, inline=True)
             embed.add_field(name="\u200b", value=items2, inline=True)
         else:
@@ -407,7 +407,7 @@ class ItemList(commands.Cog, name='Item List'):
             item_list_refreshed.sort()
             for item in item_list_refreshed:
                 items += f'‣ {item}\n'
-            embed = discord.Embed(title="Full BMAH item list", color=0xca759a, description=f'**{category_name}**\n{items}')
+            embed = discord.Embed(title="Full BMAH item list", color=self.client.color, description=f'**{category_name}**\n{items}')
 
         self.embed_dict[f'{category_name}'] = embed
 

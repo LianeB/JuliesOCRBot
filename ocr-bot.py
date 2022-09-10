@@ -31,6 +31,7 @@ client.BMAH_coll = db["BMAH_items"]
 client.error_coll = db["errors"]
 client.active_boosts_coll = db["active_boosts"]
 client.archives_coll = db["archives"]
+client.color = 0x74d40c
 client.prefix = ','
 
 # changer l'order pcq utils doit être loadé en premier
