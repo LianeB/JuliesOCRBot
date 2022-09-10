@@ -22,11 +22,11 @@ else:
     cluster = MongoClient(str(os.environ.get("MONGOCLIENT")))
 
 
-
-client = commands.Bot(command_prefix = ',')
+intents=discord.Intents.all()
+client = commands.Bot(command_prefix = ',', intents = intents, case_insensitive=True)
 client.remove_command("help")
 
-db = cluster["OCRBot"]
+db = cluster["JulieOCRBot"]
 client.BMAH_coll = db["BMAH_items"]
 client.error_coll = db["errors"]
 client.active_boosts_coll = db["active_boosts"]
