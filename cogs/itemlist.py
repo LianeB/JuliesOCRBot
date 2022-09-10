@@ -57,7 +57,7 @@ class ItemList(commands.Cog, name='Item List'):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        DiscordComponents(self.client)
+        #DiscordComponents(self.client)
         print('Bot is online.')
 
 

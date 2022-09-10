@@ -23,7 +23,7 @@ else:
 
 
 
-client = commands.Bot(command_prefix = ';')
+client = commands.Bot(command_prefix = ',')
 client.remove_command("help")
 
 db = cluster["OCRBot"]
@@ -31,7 +31,7 @@ client.BMAH_coll = db["BMAH_items"]
 client.error_coll = db["errors"]
 client.active_boosts_coll = db["active_boosts"]
 client.archives_coll = db["archives"]
-client.prefix = ';'
+client.prefix = ','
 
 # changer l'order pcq utils doit être loadé en premier
 list = []
