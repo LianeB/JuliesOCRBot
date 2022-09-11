@@ -46,8 +46,8 @@ class Utils(commands.Cog, name='Utils'):
         )
 '''
 
-def setup(client):
-    client.add_cog(Utils(client))
+async def setup(client):
+    await client.add_cog(Utils(client))
     print('Utils cog is loaded')
 
 

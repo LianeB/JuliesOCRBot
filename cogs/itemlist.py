@@ -11,11 +11,10 @@ import requests
 #from discord_components import DiscordComponents, Button, ButtonStyle, InteractionType
 from pymongo import MongoClient
 from pytz import timezone
+with open("./config.json") as f: configData = json.load(f)
 
-with open("./info.json") as f:
-    info = json.load(f)
-
-inDev = info["inDev"]
+# Development or Production
+inDev = configData["inDev"]
 
 class ItemList(commands.Cog, name='Item List'):
 
@@ -414,11 +413,8 @@ class ItemList(commands.Cog, name='Item List'):
 
 
 if inDev:
-    # cwd : current working directory
-    if os.path.exists(os.getcwd() + "/config.json"):
-        with open("./config.json") as f:
-            configData = json.load(f)
-    cluster = MongoClient(configData["MongoClient"]) # ------------------------------CHANGE HERE
+    with open("./auth.json") as f: authData = json.load(f)
+    cluster = MongoClient(authData["MongoClient"]) # ------------------------------CHANGE HERE
 
 else:
     cluster = MongoClient(str(os.environ.get("MONGOCLIENT")))
@@ -474,8 +470,8 @@ def ocr_space_url(url, overlay=False, api_key='7d59c9f1ee88957', language='eng')
     else:
         return result_string
 
-def setup(client):
-    client.add_cog(ItemList(client))
+async def setup(client):
+    await client.add_cog(ItemList(client))
     print('Item List cog is loaded')
 
 

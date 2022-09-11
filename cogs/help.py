@@ -87,6 +87,6 @@ class HelpCog(commands.Cog, name='Help'):
             await ctx.send(embed=embed)
 
 
-def setup(client):
-    client.add_cog(HelpCog(client))
+async def setup(client):
+    await client.add_cog(HelpCog(client))
     print('Help cog is loaded')
