@@ -22,11 +22,11 @@ class HelpCog(commands.Cog, name='Help'):
             else:
                 embed = discord.Embed(title=f'Error in {ctx.command}',
                                       description=f'`{self.client.prefix}{ctx.command.qualified_name} {ctx.command.signature}` \n{error}',
-                                      color=0xca759a) # can also be discord.Colour.magenta()
+                                      color=self.client.color) # can also be discord.Colour.magenta()
         except:
             embed = discord.Embed(title=f'Error',
                                   description=f'`{error}`',
-                                  color=0xca759a)
+                                  color=self.client.color)
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -37,7 +37,7 @@ class HelpCog(commands.Cog, name='Help'):
 
         # if just the basic help command (with no args)
         if arg is None:
-            embed = discord.Embed(color=0x437840, title="Help", description='Here are all the possible commands:\n\u200b')
+            embed = discord.Embed(color=self.client.color, title="Help", description='Here are all the possible commands:\n\u200b')
 
             count = 1
             for c in self.client.cogs:
@@ -63,7 +63,7 @@ class HelpCog(commands.Cog, name='Help'):
 
             # arg is a cog
             if arg in self.client.cogs:
-                embed = discord.Embed(color=0x437840) # green
+                embed = discord.Embed(color=self.client.color) # green
                 cog = self.client.get_cog(arg)
                 scog_info = ''
                 cog_commands = cog.get_commands()
@@ -74,7 +74,7 @@ class HelpCog(commands.Cog, name='Help'):
 
             # arg is a command
             elif self.client.get_command(arg) is not None:
-                embed = discord.Embed(color=0x437840) # green
+                embed = discord.Embed(color=self.client.color) # green
                 command = self.client.get_command(arg)
                 embed.add_field(name=f'**{command.name} command**'.upper(),
                                 value=f'{command.help}\n\n**Proper Syntax:**\n`{self.client.prefix}{command.qualified_name} {command.signature}`')

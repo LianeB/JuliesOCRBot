@@ -1,1 +1,1 @@
-JulieOCRBot: python ocr-bot.py
+worker: python main.py

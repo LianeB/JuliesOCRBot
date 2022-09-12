@@ -14,22 +14,26 @@ if inDev:
     with open("./auth.json") as f: authData = json.load(f)
     token = authData["Token"]
     cluster = MongoClient(authData["MongoClient"])
+    bmah_items_collection = "dev_BMAH_items"
+    print('true')
 
 else:
     token = str(os.environ.get("DISCORD_TOKEN"))
     cluster = MongoClient(str(os.environ.get("MONGOCLIENT")))
+    bmah_items_collection = "BMAH_items"
 
 
 # Setup client
 intents=discord.Intents.all()
-client = commands.Bot(command_prefix = ';', intents = intents, case_insensitive=True, help_command=None)
+client = commands.Bot(command_prefix = configData["prefix"], intents = intents, case_insensitive=True, help_command=None)
 db = cluster["JulieOCRBot"]
 
 #Set variables accessible in all cogs
-client.BMAH_coll = db["BMAH_items"]
+client.BMAH_coll = db[bmah_items_collection] # either BMAH_items or dev_BMAH_items
+print(bmah_items_collection)
 client.error_coll = db["errors"]
-client.color = 0x74d40c
-client.prefix = ';'
+client.color = 0x68bd0e #0x74d40c
+client.prefix = configData["prefix"]
 
 
 

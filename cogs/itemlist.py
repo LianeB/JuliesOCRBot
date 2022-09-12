@@ -66,12 +66,6 @@ class ItemList(commands.Cog, name='Item List'):
         """Responds with \"Pong!\""""
         await ctx.send('Pong!')
 
-    async def get_name(self, ctx):
-        if ctx.guild.id == 790974567865647116: # Liane's testing server
-            name = "test_todays_items"
-        else:
-            name = "todays_items"
-        return name
 
     @commands.command()
     async def ocr(self, ctx, input_url: typing.Optional[str]):
@@ -92,9 +86,10 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command(aliases=['scan', 's'])
-    async def save(self, ctx, input_url: typing.Optional[str]):
+    async def save(self, ctx, *, server): #input_url: typing.Optional[str]
         """Will save the BMAH items of interest from photo to the Database. Call this command with an attached image or a URL to an image"""
         try:
+            '''
             if input_url is None:
                 if len(ctx.message.attachments) == 0:
                     await ctx.send("You didn't send any image")
@@ -102,6 +97,13 @@ class ItemList(commands.Cog, name='Item List'):
                 url = ctx.message.attachments[0].url
             else:
                 url = input_url
+            '''
+
+            if len(ctx.message.attachments) == 0:
+                await ctx.send("You didn't send any image")
+                return
+
+            url = ctx.message.attachments[0].url
             scanning_msg = await ctx.send("Scanning...")
             result = ocr_space_url(url=url)
 
@@ -118,9 +120,11 @@ class ItemList(commands.Cog, name='Item List'):
                 for item in item_list:
                     if item.lower() in result.lower():
                         scanned_items += f' ‣ {item}\n'
-                        name = await self.get_name(ctx)
-                        self.client.BMAH_coll.update_one({"name": name}, {
+                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {
                         "$inc": {f'{category}.{item}': 1},
+                        }, upsert=True)
+                        self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {
+                        "$inc": {f'{server.lower()}.{item}': 1},
                         }, upsert=True)
 
             if scanned_items == '':
@@ -145,21 +149,23 @@ class ItemList(commands.Cog, name='Item List'):
 
 
         try:
-            name = await self.get_name(ctx)
-            document = self.client.BMAH_coll.find_one({"name": name})
+            document = self.client.BMAH_coll.find_one({"name": "todays_items"})
             emoji_dict = self.client.BMAH_coll.find_one({"name": "emojis"})
 
             # check if there are items in today's items
             if len(document.keys()) == 3:
                 embed = discord.Embed(description="There are no items in today's list", color=self.client.color)
-                embed.set_author(name="Today's BMAH item list", icon_url=ctx.guild.icon_url)
+                embed.set_author(name="Today's BMAH item list", icon_url=ctx.guild.icon.url)
+                embed.timestamp = datetime.datetime.utcnow()
                 await ctx.send(embed=embed)
                 return
 
             now = datetime.datetime.now().strftime('%A, %B %d')
             date_suffix = date_suffix(int(datetime.datetime.now().strftime('%d')))
-            embed = discord.Embed(color=self.client.color) #title=f'{emoji} BMAH item list - {now}{date_suffix}')
-            embed.set_author(name=f'BMAH item list - {now}{date_suffix}', icon_url=ctx.guild.icon_url) #TODO: uncomment?
+            embed = discord.Embed(description=f"The BMAH item list for **{now}{date_suffix}** is the following:", color=self.client.color) #title=f'{emoji} BMAH item list - {now}{date_suffix}')
+            embed.set_author(name=f'BMAH item list', icon_url=ctx.guild.icon.url) #TODO: uncomment?
+            embed.timestamp = datetime.datetime.now()
+            embed.set_footer(text=ctx.guild.name)
 
             # get dict items
             item_list = [*document] # list of dict keys
@@ -178,13 +184,12 @@ class ItemList(commands.Cog, name='Item List'):
             for item_name in liste_a_part:
                 dict_a_part[f'{item_name}'] = document[f'{item_name}']
 
-            # create armor fields #TODO: uncomment?
+            # create armor fields
             embed.add_field(name="\u200b", value="\u200b")
-            #embed.add_field(name="\u200b", value="**ARMOR**\n\u200b", inline=True) #**🛡️
             embed.add_field(name="\u200b", value="\u200b")
             embed.add_field(name="\u200b", value="\u200b")
             if len(ordered_dict) == 0:
-                embed.add_field(name="None", value="\u200b", inline=True)
+                embed.add_field(name="No armor items", value="\u200b", inline=True)
                 embed.add_field(name="\u200b", value="\u200b")
                 embed.add_field(name="\u200b", value="\u200b")
 
@@ -209,12 +214,8 @@ class ItemList(commands.Cog, name='Item List'):
                 embed.add_field(name="\u200b", value="\u200b")
 
             # Add Misc, Pets, Mounts
-            embed.add_field(name="\u200b", value="\u200b")
-            #embed.add_field(name="\u200b", value="**MISC/MOUNTS/PETS**\n\u200b", inline=True) # 🐴
-            embed.add_field(name="\u200b", value="\u200b")
-            embed.add_field(name="\u200b", value="\u200b")
             if len(dict_a_part) == 0:
-                embed.add_field(name="None", value="\u200b", inline=True)
+                embed.add_field(name="No Pets, Mounts or Misc items", value="\u200b", inline=True)
             else:
                 for category, item_dict in dict_a_part.items():
                     items = ''
@@ -238,22 +239,89 @@ class ItemList(commands.Cog, name='Item List'):
             await ctx.send(f'There was an error. Error log for Dev: ```{traceback.format_exc()}```')
 
 
+
+
+    @commands.command(aliases=['server'])
+    async def servers(self, ctx, *, item_given=None):
+        """Shows the list of today's items that were scanned by the bot"""
+        try:
+            document = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+
+            # check if there are items in today's items
+            if len(document.keys()) == 2:
+                embed = discord.Embed(description="There are no items in today's list", color=self.client.color)
+                embed.set_author(name="Servers", icon_url=ctx.guild.icon.url)
+                await ctx.send(embed=embed)
+                return
+
+            embed = discord.Embed(color=self.client.color) #title=f'{emoji} BMAH item list - {now}{date_suffix}')
+            embed.set_author(name="Servers", icon_url=ctx.guild.icon.url)
+
+            if item_given is None:
+                # get dict items
+                item_list = [*document] # list of dict keys
+                unwanted = {'_id', 'name'}
+                item_list_sorted = sorted([item for item in item_list if item not in unwanted])
+
+                # order dict
+                ordered_dict = {}
+                for item_name in item_list_sorted:
+                    ordered_dict[f'{item_name}'] = document[f'{item_name}']
+
+                # create fields
+                if len(ordered_dict) == 0:
+                    embed.add_field(name="No items scanned", value="\u200b", inline=True)
+
+                for server, item_dict in ordered_dict.items():
+                    items = ''
+                    last_item = list(item_dict)[-1]
+                    for item, amount in item_dict.items():
+                        items += f'{item} {"("+ str(amount) +")" if amount > 1 else ""}\n'
+                        if item == last_item:
+                            items += "\u200b"
+                    embed.add_field(name=server.capitalize(), value=items, inline=True)
+                await ctx.send(embed=embed)
+
+            else:
+                for server, item_list in document.items():
+                    if server == "_id" or server == "name":
+                        continue
+                    servers = f''
+                    for item in item_list:
+                        if item.lower() in item_given.lower():
+                            servers += f'\n{server.capitalize()}'
+
+                    if not servers:
+                        servers = 'The item given is not in today\'s list. (or check for spelling errors)'
+                    else:
+                        servers = f'**{item_given}** can be found in:' + servers
+
+                await ctx.send(servers)
+        except:
+            await ctx.send(f'There was an error. Error log for Dev: ```{traceback.format_exc()}```')
+
+
     @commands.command()
     async def wipe(self, ctx):
         """Wipes today's list of items from the database"""
-        name = await self.get_name(ctx)
-        document = self.client.BMAH_coll.find_one({"name": name})
+        document = self.client.BMAH_coll.find_one({"name": "todays_items"})
+        document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
 
         for category, item_list in document.items():
             if category == "_id" or category == "name":
                 continue
-            self.client.BMAH_coll.update_one({"name": name}, {'$unset': {f'{category}':1}})
+            self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}':1}})
+
+        for server, item_list in document_servers.items():
+            if server == "_id" or server == "name":
+                continue
+            self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server}':1}})
 
         await ctx.send("The bot's current list of items has been successfully wiped.")
 
 
     @commands.command()
-    async def add(self, ctx, amount: typing.Optional[int] = 1, *, item_name:str):
+    async def add(self, ctx, server, *, item_name:str):
         """Manually add an item to today's item list. Use this if the bot didn't scan the words correctly."""
 
         document = self.client.BMAH_coll.find_one({"name": "all_items"})
@@ -262,41 +330,56 @@ class ItemList(commands.Cog, name='Item List'):
                 continue
             for item in item_list:
                 if item.lower() in item_name.lower():
-                    name = await self.get_name(ctx)
-
-                    self.client.BMAH_coll.update_one({"name": name}, {
-                        "$inc": {f'{category}.{item}': amount},
+                    self.client.BMAH_coll.update_one({"name": "todays_items"}, {
+                        "$inc": {f'{category}.{item}': 1},
                     }, upsert=True)
-                    await ctx.send(f'Added {amount} **{item_name}** to today\'s list')
+                    self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {
+                        "$inc": {f'{server.lower()}.{item}': 1},
+                    }, upsert=True)
+                    await ctx.send(f'Added **{item_name}** to today\'s list in {server}')
                     return
 
         await ctx.send(f'**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`')
 
     @commands.command()
-    async def remove(self, ctx, amount: typing.Optional[int] = None, *, item_name):
-        """Manually remove an item from today's item list. If no quantity is specified, the bot will remove all items with that name"""
-        name = await self.get_name(ctx)
+    async def remove(self, ctx, server, *, item_name):
+        """Manually remove 1 of an item from today's item list."""
         document = self.client.BMAH_coll.find_one({"name": "all_items"})
+
+        # Document classified by item type
         for category, item_list in document.items():
             if category == "_id" or category == "name":
                 continue
             for item in item_list:
                 if item.lower() in item_name.lower():
-                    if amount == None:
-                        self.client.BMAH_coll.update_one({"name": name}, {'$unset': {f'{category}.{item}':1}})
-                        document_today = self.client.BMAH_coll.find_one({"name": name})
-                    else:
-                        self.client.BMAH_coll.update_one({"name": name}, {
-                            "$inc": {f'{category}.{item}': -amount},
-                        }, upsert=True)
-                        document_today = self.client.BMAH_coll.find_one({"name": name})
-                        if document_today[f'{category}'][f'{item}'] == 0:
-                            self.client.BMAH_coll.update_one({"name": name}, {'$unset': {f'{category}.{item}':1}})
+                    # remove 1 item
+                    self.client.BMAH_coll.update_one({"name": "todays_items"}, {
+                        "$inc": {f'{category}.{item}': -1},
+                    }, upsert=True)
+                    document_today = self.client.BMAH_coll.find_one({"name": "todays_items"})
+                    if document_today[f'{category}'][f'{item}'] == 0:
+                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}.{item}':1}})
 
+                    # if item category reaches 0
                     if len(document_today[f'{category}']) == 0:
-                        self.client.BMAH_coll.update_one({"name": name}, {'$unset': {f'{category}':1}})
+                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}':1}})
 
-                    await ctx.send(f'Removed {amount if amount else ""} **{item_name}** from today\'s list')
+                    await ctx.send(f'Removed a **{item_name}** from today\'s list')
+
+
+                    # Document classified by server
+                    # remove 1 item
+                    self.client.BMAH_coll.update_one({"name": "todays_items_server"}, {
+                        "$inc": {f'{server.lower()}.{item_name}': -1},
+                    }, upsert=True)
+                    document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_server"})
+                    if document_servers[f'{server.lower()}'][f'{item_name}'] == 0:
+                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{server.lower()}.{item_name}':1}})
+
+                    # if server category reaches 0
+                    if len(document_servers[f'{server.lower()}']) == 0:
+                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{server.lower()}':1}})
+
                     return
 
         await ctx.send(f'**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`')
