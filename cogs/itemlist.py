@@ -243,7 +243,7 @@ class ItemList(commands.Cog, name='Item List'):
 
     @commands.command(aliases=['server'])
     async def servers(self, ctx, *, item_given=None):
-        """Shows the list of today's items that were scanned by the bot"""
+        """Shows the list of today's items that were scanned by the bot, classified by server"""
         try:
             document = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
 
@@ -283,18 +283,18 @@ class ItemList(commands.Cog, name='Item List'):
                 await ctx.send(embed=embed)
 
             else:
+                servers = f''
                 for server, item_list in document.items():
                     if server == "_id" or server == "name":
                         continue
-                    servers = f''
                     for item in item_list:
                         if item.lower() in item_given.lower():
                             servers += f'\n{server.capitalize()}'
 
-                    if not servers:
-                        servers = 'The item given is not in today\'s list. (or check for spelling errors)'
-                    else:
-                        servers = f'**{item_given}** can be found in:' + servers
+                if not servers:
+                    servers = 'The item given is not in today\'s list. (or check for spelling errors)'
+                else:
+                    servers = f'**{item_given}** can be found in:' + servers
 
                 await ctx.send(servers)
         except:
