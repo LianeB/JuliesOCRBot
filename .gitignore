@@ -1,5 +1,6 @@
 auth.json
 cogs/__pycache__
+views/__pycache__
 .idea/
 heroku-OCR-bot-creds.txt
 *.bak

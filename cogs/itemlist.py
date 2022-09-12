@@ -8,9 +8,9 @@ import discord
 import typing
 from discord.ext import commands
 import requests
-#from discord_components import DiscordComponents, Button, ButtonStyle, InteractionType
 from pymongo import MongoClient
 from pytz import timezone
+from views import dbView
 with open("./config.json") as f: configData = json.load(f)
 
 # Development or Production
@@ -53,6 +53,7 @@ class ItemList(commands.Cog, name='Item List'):
                 embed = discord.Embed(title="Full BMAH item list", color=self.client.color, description=f'**{category}**\n{items}')
 
             self.embed_dict[f'{category}'] = embed
+
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -341,6 +342,7 @@ class ItemList(commands.Cog, name='Item List'):
 
         await ctx.send(f'**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`')
 
+
     @commands.command()
     async def remove(self, ctx, server, *, item_name):
         """Manually remove 1 of an item from today's item list."""
@@ -384,32 +386,16 @@ class ItemList(commands.Cog, name='Item List'):
 
         await ctx.send(f'**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`')
 
-    '''
+
+
     @commands.command()
     async def db(self, ctx):
         """Shows all items in the database that are scanned for"""
         embed = discord.Embed(title="Full BMAH item list", color=self.client.color, description="Click on the category in which you want to see the items")
+        view = dbView.dbView(self.embed_dict)
+        view.message = await ctx.send(embed=embed, view=view)
 
-        categories = [*self.embed_dict] # list of dict keys
-        nbCategories = len(categories)
-        count = 0
-        done = False
-        buttons = []
-        for i in range(5):
-            buttons.append([])
-            for j in range(5):
-                btn = Button(label=categories[count])
-                buttons[i].append(btn)
 
-                count += 1
-                if count == nbCategories:
-                    done = True
-                    break
-            if done:
-                break
-
-        await ctx.send(embed=embed, components=buttons)
-    '''
 
     @commands.command()
     async def dbadd(self, ctx, category, *, item_name):
@@ -440,6 +426,7 @@ class ItemList(commands.Cog, name='Item List'):
         await ctx.send(f'The category **{category}** does not exist in the database. Please chose another.')
 
 
+
     @commands.command()
     async def dbremove(self, ctx, *, item_name):
         """Removes an item from the database so it doesn't get scanned anymore."""
@@ -456,15 +443,6 @@ class ItemList(commands.Cog, name='Item List'):
                     return
         await ctx.send(f'The item **{item_name}** does not exist in the database.')
 
-    '''
-    @commands.Cog.listener()
-    async def on_button_click(self, res):
-        categories = [*self.embed_dict] # list of dict keys
-        if res.component.label in categories:
-            msg = await res.channel.fetch_message(res.message.id)
-            await res.respond(type=6)
-            await msg.edit(embed=self.embed_dict[res.component.label])
-    '''
 
     async def reload_embed_dict(self, category_name):
         document = self.client.BMAH_coll.find_one({"name": "all_items"})
