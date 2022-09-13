@@ -37,24 +37,21 @@ class HelpCog(commands.Cog, name='Help'):
 
         # if just the basic help command (with no args)
         if arg is None:
-            embed = discord.Embed(color=self.client.color, title="Help", description='Here are all the possible commands:\n\u200b')
-
-            count = 1
+            embed = discord.Embed(color=self.client.color, title="Help")
+            scog_info = 'Here are all the possible commands:\n\n'
             for c in self.client.cogs:
                 cog = self.client.get_cog(c)
                 if cog.qualified_name == 'Help' or cog.qualified_name == 'Utils':
                     continue
-                scog_info = ''
+                scog_info += f'__**{cog.qualified_name} Module Commands**__\n'
                 cog_commands = cog.get_commands()
                 for c in cog_commands:
                     if not c.hidden:
                         scog_info += f'**{c.name}** - {c.help}\n'
-                embed.add_field(name=f'__{cog.qualified_name} Module Commands__', value=scog_info, inline=False)
-                if count == 1:
-                    embed.add_field(name="\u200b", value="\u200b")
-                    count += 1
+                scog_info += '\n'
             footer_text = f'\n You can also type {self.client.prefix}help <command name> for info on a specific command\nExample: {self.client.prefix}help save'
             embed.set_footer(text=footer_text)
+            embed.description = scog_info
 
             await ctx.send(embed=embed)
 
@@ -74,10 +71,15 @@ class HelpCog(commands.Cog, name='Help'):
 
             # arg is a command
             elif self.client.get_command(arg) is not None:
-                embed = discord.Embed(color=self.client.color) # green
+                embed = discord.Embed(color=self.client.color)
                 command = self.client.get_command(arg)
+                info = f'{command.help}\n\n**Proper Syntax:**\n`{self.client.prefix}{command.qualified_name} {command.signature}`\n'
+                for alias in command.aliases:
+                    info += f'`{self.client.prefix}{alias} {command.signature}`\n'
+                info += '\n'
+
                 embed.add_field(name=f'**{command.name} command**'.upper(),
-                                value=f'{command.help}\n\n**Proper Syntax:**\n`{self.client.prefix}{command.qualified_name} {command.signature}`')
+                                value=info)
 
             else:
                 embed = discord.Embed(color=0x43780) # blue for error

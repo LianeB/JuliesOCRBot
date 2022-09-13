@@ -7,11 +7,13 @@ import time
 import traceback
 import discord
 import typing
+from statistics import mean
 from discord.ext import commands
 import requests
 from pymongo import MongoClient
 from pytz import timezone
-from views import dbView
+from views import dbView, confirmView
+from cogs import utils
 with open("./config.json") as f: configData = json.load(f)
 
 # Development or Production
@@ -25,6 +27,8 @@ class ItemList(commands.Cog, name='Item List'):
     def __init__(self, client):
         self.client = client
         self.embed_dict = {}
+        self.embed_average_dict = {}
+        self.last_price_entry_items = {} # dict of {item : category}
 
         document = self.client.BMAH_coll.find_one({"name": "all_items"})
 
@@ -55,6 +59,26 @@ class ItemList(commands.Cog, name='Item List'):
 
             self.embed_dict[f'{category}'] = embed
 
+        self.reload_averages_dict()
+
+
+    def reload_averages_dict(self):
+        document = self.client.BMAH_coll.find_one({"name": "prices"})
+
+        for category, item_obj in document.items():
+            if category == "_id" or category == "name":
+                continue
+            else:
+                item_obj = dict(sorted(item_obj.items()))  # sort dictionary alphabetically
+                desc = ''
+                for item, price_list in item_obj.items():
+                    if price_list:
+                        desc += f'‣ {item} ─ **{int(mean(price_list)):,}g**\n'
+                    else:
+                        desc += f'‣ {item} ─ **x**\n'
+                embed = discord.Embed(title="Averages", color=self.client.color, description=desc)
+
+                self.embed_average_dict[f'{category}'] = embed
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -472,54 +496,257 @@ class ItemList(commands.Cog, name='Item List'):
 
         self.embed_dict[f'{category_name}'] = embed
 
-        '''
-        @commands.command(aliases=['prices', 'p'])
-        async def enterprices(self, ctx, *, inputted_server):
-            document = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
 
-            # verify server is in today's list
-            isPresent = False
-            for server, item_list in document.items():
-                if server.lower() in inputted_server.lower():
-                    isPresent = True
-                    break
-            if not isPresent:
-                await ctx.send(f"The server {inputted_server} is either not in today's list, or there is a typo. Use `;servers` to verify today's servers.")
-                return
 
-            item_list = document[inputted_server]
-            scanned_items = ''
-            for item in item_list:
-                scanned_items += f' ‣ {item}\n'
 
-            def check(m):
-                return m.author == ctx.message.author
+    @commands.command(aliases=['enterprice', 'ep'])
+    async def enterprices(self, ctx, *, inputted_server):
+        """Enter the prices for the items of a server in today's list"""
+        document = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
 
-            await ctx.send(content=f'The items in {inputted_server} are:\n```{scanned_items}```')
-            for item in item_list:
-                await ctx.send(content=f"Enter price for **{item}**:")
+        # verify server is in today's list
+        isPresent = False
+        for server, item_list in document.items():
+            if server.lower() in inputted_server.lower():
+                isPresent = True
+                break
+        if not isPresent:
+            await ctx.send(f"The server **{inputted_server.title()}** is either not in today's list, or there is a typo. Use `{self.client.prefix}servers` to see today's servers.")
+            return
 
+        # Get items from server
+        item_list = document[inputted_server.lower()]
+        scanned_items = ''
+        for item in item_list:
+            scanned_items += f' ‣ {item}\n'
+
+        def check(m):
+            return m.author == ctx.message.author
+
+        # Receive user input
+        await ctx.send(content=f'The items in **{inputted_server.title()}** are:\n```{scanned_items}```')
+        price_list = {} # dict of {item : price}
+        for item in item_list:
+            await ctx.send(content=f"Enter price for **{item}**:")
+
+            while True:
                 try:
-                    msg = await self.client.wait_for('message', check=check, timeout=180)
+                    msg = await self.client.wait_for('message', check=check, timeout=360)
+                    inputted_price = msg.content
+                    if inputted_price.lower() == 'cancel':
+                        await ctx.send("Cancelled the entry.")
+                        return
+                    # convert K to 1000 or M to 1,000,000
+                    translated_price = utils.translate_price(inputted_price)
+                    price_list[item] = translated_price
+                    break
                 except asyncio.TimeoutError:
                     await ctx.send("Timeout. Redo the command.")
-                else:
-                    # save to db (add to item array)
-                    pass
-
-            await ctx.send("Done!")
+                    return
+                except:
+                    await ctx.send(f'Incorrect number format. Please enter number again.\nExamples of what I accept : `200500` `200,500` `200.5k` `200,5k` `200k` `200K` (k or M)')
 
 
+        # save all items and prices to db (in db: add to item array)
+        all_items_document = self.client.BMAH_coll.find_one({"name": "all_items"})
+        item_category_dict = {} # dict of {item : category}
+        for item, price in price_list.items():
+            # find category
+            category = ''
+            shouldBreak = False
+            for _category, item_list in all_items_document.items():
+                if _category == "_id" or _category == "name":
+                    continue
+                for _item in item_list:
+                    if _item.lower() in item.lower():
+                        category = _category
+                        shouldBreak = True
+                        item_category_dict[item] = category
+                        break
+                if shouldBreak : break
+            # add to db
+            self.client.BMAH_coll.update_one({"name": "prices"}, {"$push": {f'{category}.{item}': price}})
 
-        @commands.command(aliases=['avg', 'average'])
-        async def averages(self, ctx, *, item_name=None):
-            pass
-            # print all the averages
-            # pareille comme ;db mais avec les averages. 2 fields: item name, average price
-            # Exception: mounts sera un embed description (trop de mounts)
+        # save item_list in a self.variable list to keep in memory last changes done. (Overwrite last one)
+        self.last_price_entry_items = item_category_dict
 
-            # si item_name donné : print avg of just that item
-        '''
+        # Confirmation message
+        lst = ''
+        for item, price in price_list.items():
+            lst += f'\n ‣ {item} - {price:,}g'
+        await ctx.send(f"✅ the following prices have been recorded:```{lst}```")
+
+        # Reload averages
+        self.reload_averages_dict()
+
+
+
+    @commands.command(aliases=['removeprices', 'rmp'])
+    async def removelastprices(self, ctx):
+        """In case of error when entering the prices with 'enterPrices', use this command to wipe the last set of prices entered."""
+
+        # verify self.variable isn't empty (empty on reboot, or after a previous deletion)
+        if not self.last_price_entry_items:
+            await ctx.send("The previous list of items has already been deleted (or the bot has recently rebooted).") # or the bot has rebooted
+            return
+
+        # Confirm we want to delete these items
+        document = self.client.BMAH_coll.find_one({"name": "prices"})
+        items_to_delete_str = ''
+        for item, category in self.last_price_entry_items.items():
+            price_list = document[category][item]
+            items_to_delete_str += f" ‣ {item} - {price_list[-1]:,}g\n"
+        view = confirmView.ConfirmView()
+        view.message = await ctx.send(f"This will delete the following item prices:\n"
+                                      f"```{items_to_delete_str}```"
+                                      f"Proceed with the deletion?", view=view)
+        await view.wait()
+        if view.value is None:
+            await ctx.send('Timed out. Please re-type the command to delete.')
+        elif view.value:
+
+            # Remove last price for each item
+            for item, category in self.last_price_entry_items.items(): # dict of {item : category}
+                print(category)
+                print(item)
+                self.client.BMAH_coll.update_one({"name": "prices"}, {"$pop": {f'{category}.{item}': 1 }}) # 1 : pop last element of array
+
+            # empty self.variable
+            self.last_price_entry_items = {}
+
+            # Confirmation message
+            await ctx.send(f"✅ the prices have been deleted")
+
+            # Reload averages
+            self.reload_averages_dict()
+
+
+
+    @commands.command(aliases=['avg', 'average'])
+    async def averages(self, ctx, *, item_name=None):
+        """Shows the average price of items"""
+
+        # If an item is specifed, print avg of just that item
+        if item_name:
+            #verify good item name
+            document = self.client.BMAH_coll.find_one({"name": "prices"})
+            del document["name"]
+            del document["_id"]
+            price_list = []
+            formatted_item = ''
+            found = False
+            for category_name, items_obj in document.items():
+                keysList = list(items_obj.keys())
+                for item in keysList:
+                    if item_name.lower() in item.lower():
+                        price_list = document[category_name][item]
+                        formatted_item = item
+                        found = True
+                        break
+            if not found:
+                await ctx.send(
+                    f"**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`")
+                return
+            # Create embed
+            embed = discord.Embed(color=self.client.color)
+            embed.set_author(name="Averages", icon_url=ctx.guild.icon.url)
+            if price_list:
+                desc = f"The average price for **{formatted_item}** is:\n\n**{int(mean(price_list)):,}g**"
+            else:
+                desc = f"The average price for **{formatted_item}** is:\n\n**No data**"
+            embed.description = desc
+            await ctx.send(embed=embed)
+
+        # No item specified
+        else:
+            embed = discord.Embed(title="Averages", color=self.client.color, description="Click on the category in which you want to see the items")
+            view = dbView.dbView(self.embed_average_dict)
+            view.message = await ctx.send(embed=embed, view=view)
+
+
+
+    @commands.command(aliases=['prices', 'p'])
+    async def price(self, ctx, *, item_name):
+        """Shows all the past prices an item had, as well as its average"""
+        document = self.client.BMAH_coll.find_one({"name": "prices"})
+        del document["name"]
+        del document["_id"]
+        price_list = []
+        formatted_item = ''
+        found=False
+        for category_name, items_obj in document.items():
+            keysList = list(items_obj.keys())
+            for item in keysList:
+                if item_name.lower() in item.lower():
+                    price_list = document[category_name][item]
+                    formatted_item = item
+                    found=True
+                    break
+        if not found:
+            await ctx.send(f"**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`")
+            return
+        embed = discord.Embed(color=self.client.color)
+        embed.set_author(name="Prices", icon_url=ctx.guild.icon.url)
+        if price_list:
+            prices = ''
+            for price in price_list:
+                prices += f"{price:,}g\n"
+            desc = f"The past prices for **{formatted_item}** are the following:\n\n" \
+                   f"{prices}" \
+                   f"\nAverage : **{int(mean(price_list)):,}g**"
+        else:
+            desc = f"The past prices for **{formatted_item}** are the following:\n\n" \
+                   f"No data"
+        embed.description = desc
+        await ctx.send(embed=embed)
+
+
+
+    @commands.command(aliases=['ap'])
+    async def addprice(self, ctx, price, *, item_name):
+        """Manually add a price for an item"""
+
+        # Convert price
+        try:
+            translated_price = utils.translate_price(price)
+        except:
+            await ctx.send(f'Incorrect number format. Please enter number again.\nExamples of what I accept : `200500` `200,500` `200.5k` `200,5k` `200k` `200K` (k or M)')
+            return
+
+        # find category and add to item array
+        all_items_document = self.client.BMAH_coll.find_one({"name": "all_items"})
+        category = ''
+        item = ''
+        item_category_dict = {}
+        found = False
+        for _category, item_list in all_items_document.items():
+            if _category == "_id" or _category == "name":
+                continue
+            for _item in item_list:
+                if _item.lower() in item_name.lower():
+                    category = _category
+                    item = _item
+                    found = True
+                    item_category_dict[item] = category
+                    break
+            if found : break
+        if not found :
+            await ctx.send(f"**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`")
+            return
+
+        # add to db
+        self.client.BMAH_coll.update_one({"name": "prices"}, {"$push": {f'{category}.{item}': translated_price}})
+
+        # Fill self.variable
+        self.last_price_entry_items = item_category_dict
+
+        # Confirmation
+        lst = f' ‣ {item} - {translated_price:,}g'
+        await ctx.send(f"✅ the following price has been recorded:```{lst}```")
+
+        # Reload averages
+        self.reload_averages_dict()
+
 
 
 if inDev:
