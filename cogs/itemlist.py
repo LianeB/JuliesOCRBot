@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import json
 import os
@@ -81,9 +82,9 @@ class ItemList(commands.Cog, name='Item List'):
         scanning_msg = await ctx.send("Scanning...")
         result = ocr_space_url(url=url) #http://i.imgur.com/31d5L5y.jpg
         if result == '':
-            await scanning_msg.edit(f'No text was found in the image')
+            await scanning_msg.edit(content=f'No text was found in the image')
         else:
-            await scanning_msg.edit(f'```{result}```')
+            await scanning_msg.edit(content=f'```{result}```')
 
 
     @commands.command(aliases=['scan', 's'])
@@ -280,7 +281,7 @@ class ItemList(commands.Cog, name='Item List'):
                         items += f'{item} {"("+ str(amount) +")" if amount > 1 else ""}\n'
                         if item == last_item:
                             items += "\u200b"
-                    embed.add_field(name=server.capitalize(), value=items, inline=True)
+                    embed.add_field(name=server.title(), value=items, inline=True)
                 await ctx.send(embed=embed)
 
             else:
@@ -337,7 +338,7 @@ class ItemList(commands.Cog, name='Item List'):
                     self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {
                         "$inc": {f'{server.lower()}.{item}': 1},
                     }, upsert=True)
-                    await ctx.send(f'Added **{item_name}** to today\'s list in {server}')
+                    await ctx.send(f'Added **{item}** to today\'s list in **{server.title()}**')
                     return
 
         await ctx.send(f'**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`')
@@ -366,21 +367,21 @@ class ItemList(commands.Cog, name='Item List'):
                     if len(document_today[f'{category}']) == 0:
                         self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}':1}})
 
-                    await ctx.send(f'Removed a **{item_name}** from today\'s list')
+                    await ctx.send(f'Removed one **{item}** from today\'s list in **{server.title()}**')
 
 
                     # Document classified by server
                     # remove 1 item
-                    self.client.BMAH_coll.update_one({"name": "todays_items_server"}, {
-                        "$inc": {f'{server.lower()}.{item_name}': -1},
+                    self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {
+                        "$inc": {f'{server.lower()}.{item}': -1},
                     }, upsert=True)
-                    document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_server"})
-                    if document_servers[f'{server.lower()}'][f'{item_name}'] == 0:
-                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{server.lower()}.{item_name}':1}})
+                    document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+                    if document_servers[server.lower()][item] == 0:
+                        self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}.{item}':1}})
 
                     # if server category reaches 0
-                    if len(document_servers[f'{server.lower()}']) == 0:
-                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{server.lower()}':1}})
+                    if len(document_servers[server.lower()]) == 0:
+                        self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}':1}})
 
                     return
 
@@ -471,6 +472,54 @@ class ItemList(commands.Cog, name='Item List'):
 
         self.embed_dict[f'{category_name}'] = embed
 
+        '''
+        @commands.command(aliases=['prices', 'p'])
+        async def enterprices(self, ctx, *, inputted_server):
+            document = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+
+            # verify server is in today's list
+            isPresent = False
+            for server, item_list in document.items():
+                if server.lower() in inputted_server.lower():
+                    isPresent = True
+                    break
+            if not isPresent:
+                await ctx.send(f"The server {inputted_server} is either not in today's list, or there is a typo. Use `;servers` to verify today's servers.")
+                return
+
+            item_list = document[inputted_server]
+            scanned_items = ''
+            for item in item_list:
+                scanned_items += f' ‣ {item}\n'
+
+            def check(m):
+                return m.author == ctx.message.author
+
+            await ctx.send(content=f'The items in {inputted_server} are:\n```{scanned_items}```')
+            for item in item_list:
+                await ctx.send(content=f"Enter price for **{item}**:")
+
+                try:
+                    msg = await self.client.wait_for('message', check=check, timeout=180)
+                except asyncio.TimeoutError:
+                    await ctx.send("Timeout. Redo the command.")
+                else:
+                    # save to db (add to item array)
+                    pass
+
+            await ctx.send("Done!")
+
+
+
+        @commands.command(aliases=['avg', 'average'])
+        async def averages(self, ctx, *, item_name=None):
+            pass
+            # print all the averages
+            # pareille comme ;db mais avec les averages. 2 fields: item name, average price
+            # Exception: mounts sera un embed description (trop de mounts)
+
+            # si item_name donné : print avg of just that item
+        '''
 
 
 if inDev:
