@@ -156,7 +156,7 @@ class ItemList(commands.Cog, name='Item List'):
             if scanned_items == '':
                 await scanning_msg.edit(content=f'No items of interest were found in this image')
             else:
-                await scanning_msg.edit(content=f'The following items were added to today\'s BMAH item list:\n```{scanned_items}```')
+                await scanning_msg.edit(content=f'The following items were added to today\'s BMAH item list in the server **{server.title()}**:\n```{scanned_items}```')
         except:
             await ctx.send(f'There was an unexpected error. Error log for Dev: ```{traceback.format_exc()}```')
 
@@ -372,6 +372,12 @@ class ItemList(commands.Cog, name='Item List'):
     async def remove(self, ctx, server, *, item_name):
         """Manually remove 1 of an item from today's item list."""
         document = self.client.BMAH_coll.find_one({"name": "all_items"})
+        document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+
+        # verify server exists
+        if server.lower()  not in document_servers:
+            await ctx.send(f"The server **{server.title()}** does not have items today. You can see the list of today's servers with `{self.client.prefix}servers`")
+            return
 
         # Document classified by item type
         for category, item_list in document.items():
@@ -379,19 +385,28 @@ class ItemList(commands.Cog, name='Item List'):
                 continue
             for item in item_list:
                 if item.lower() in item_name.lower():
+
                     # remove 1 item
                     self.client.BMAH_coll.update_one({"name": "todays_items"}, {
                         "$inc": {f'{category}.{item}': -1},
                     }, upsert=True)
+
+                    # refresh document
                     document_today = self.client.BMAH_coll.find_one({"name": "todays_items"})
+
+                    # if item count reaches 0, remove item from that category
                     if document_today[f'{category}'][f'{item}'] == 0:
                         self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}.{item}':1}})
 
-                    # if item category reaches 0
-                    if len(document_today[f'{category}']) == 0:
+                    # refresh document
+                    document_today = self.client.BMAH_coll.find_one({"name": "todays_items"})
+
+                    # if no more items in category
+                    print(f"number of items in category : {len(document_today[category])}")
+                    if len(document_today[category]) == 0:
                         self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}':1}})
 
-                    await ctx.send(f'Removed one **{item}** from today\'s list in **{server.title()}**')
+                    await ctx.send(f'Removed one **{item}** from today\'s list from the server **{server.title()}**')
 
 
                     # Document classified by server
@@ -399,16 +414,25 @@ class ItemList(commands.Cog, name='Item List'):
                     self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {
                         "$inc": {f'{server.lower()}.{item}': -1},
                     }, upsert=True)
+
+                    # refresh document
                     document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+
+                    # if item count reaches 0, remove item from that server
                     if document_servers[server.lower()][item] == 0:
                         self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}.{item}':1}})
 
-                    # if server category reaches 0
+                    # refresh document
+                    document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+
+                    # if no more items in that server, delete the server
+                    print(f"number of items in server : {len(document_servers[server.lower()])}")
                     if len(document_servers[server.lower()]) == 0:
                         self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}':1}})
 
                     return
 
+        # item not in database
         await ctx.send(f'**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`')
 
 
@@ -536,6 +560,8 @@ class ItemList(commands.Cog, name='Item List'):
                     if inputted_price.lower() == 'cancel':
                         await ctx.send("Cancelled the entry.")
                         return
+                    if inputted_price.lower() == 'skip':
+                        break
                     # convert K to 1000 or M to 1,000,000
                     translated_price = utils.translate_price(inputted_price)
                     price_list[item] = translated_price
@@ -572,9 +598,12 @@ class ItemList(commands.Cog, name='Item List'):
 
         # Confirmation message
         lst = ''
-        for item, price in price_list.items():
-            lst += f'\n ‣ {item} - {price:,}g'
-        await ctx.send(f"✅ the following prices have been recorded:```{lst}```")
+        if not price_list:
+            await ctx.send("No prices were registered.")
+        else:
+            for item, price in price_list.items():
+                lst += f'\n ‣ {item} - {price:,}g'
+            await ctx.send(f"✅ the following prices have been recorded:```{lst}```")
 
         # Reload averages
         self.reload_averages_dict()
@@ -668,6 +697,7 @@ class ItemList(commands.Cog, name='Item List'):
     @commands.command(aliases=['prices', 'p'])
     async def price(self, ctx, *, item_name):
         """Shows all the past prices an item had, as well as its average"""
+        # verify item exists
         document = self.client.BMAH_coll.find_one({"name": "prices"})
         del document["name"]
         del document["_id"]
@@ -685,6 +715,8 @@ class ItemList(commands.Cog, name='Item List'):
         if not found:
             await ctx.send(f"**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`")
             return
+
+        # Create embed
         embed = discord.Embed(color=self.client.color)
         embed.set_author(name="Prices", icon_url=ctx.guild.icon.url)
         if price_list:
@@ -703,36 +735,67 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command(aliases=['ap'])
-    async def addprice(self, ctx, price, *, item_name):
+    async def addprice(self, ctx):
         """Manually add a price for an item"""
 
-        # Convert price
-        try:
-            translated_price = utils.translate_price(price)
-        except:
-            await ctx.send(f'Incorrect number format. Please enter number again.\nExamples of what I accept : `200500` `200,500` `200.5k` `200,5k` `200k` `200K` (k or M)')
-            return
+        def check(m):
+            return m.author == ctx.message.author
 
-        # find category and add to item array
+        # Prompt item name
+        await ctx.send(content=f"Enter item name:")
         all_items_document = self.client.BMAH_coll.find_one({"name": "all_items"})
         category = ''
         item = ''
         item_category_dict = {}
         found = False
-        for _category, item_list in all_items_document.items():
-            if _category == "_id" or _category == "name":
-                continue
-            for _item in item_list:
-                if _item.lower() in item_name.lower():
-                    category = _category
-                    item = _item
-                    found = True
-                    item_category_dict[item] = category
+
+        while True:
+            try:
+                msg = await self.client.wait_for('message', check=check, timeout=360)
+                inputted_item = msg.content
+                if inputted_item.lower() == 'cancel':
+                    await ctx.send("Cancelled the entry.")
+                    return
+                # verify item exists
+                for _category, item_list in all_items_document.items():
+                    if _category == "_id" or _category == "name":
+                        continue
+                    for _item in item_list:
+                        if _item.lower() in inputted_item.lower():
+                            category = _category
+                            item = _item
+                            found = True
+                            item_category_dict[item] = category
+                            break
+                    if found : break
+                if not found :
+                    await ctx.send(f"**{inputted_item}** does not exist in the database. Make sure your spelling is correct. Please re-type it.")
+                else:
                     break
-            if found : break
-        if not found :
-            await ctx.send(f"**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`")
-            return
+            except asyncio.TimeoutError:
+                await ctx.send("Timeout. Redo the command.")
+                return
+
+        # Prompt price
+        await ctx.send(content=f"Enter price:")
+
+        while True:
+            try:
+                msg = await self.client.wait_for('message', check=check, timeout=360)
+                inputted_price = msg.content
+                if inputted_price.lower() == 'cancel':
+                    await ctx.send("Cancelled the entry.")
+                    return
+                # convert price
+                translated_price = utils.translate_price(inputted_price)
+                break
+            except asyncio.TimeoutError:
+                await ctx.send("Timeout. Redo the command.")
+                return
+            except:
+                await ctx.send(
+                    f'Incorrect number format. Please enter number again.\nExamples of what I accept : `200500` `200,500` `200.5k` `200,5k` `200k` `200K` (k or M)')
+
 
         # add to db
         self.client.BMAH_coll.update_one({"name": "prices"}, {"$push": {f'{category}.{item}': translated_price}})
