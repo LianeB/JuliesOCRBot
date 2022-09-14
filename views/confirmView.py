@@ -9,12 +9,17 @@ class ConfirmView(discord.ui.View):
         self.value = None
         self.timeout = 60
 
+
     # Grey out on timeout
     async def on_timeout(self) -> None:
+        await self.disable_buttons()
+
+
+    async def disable_buttons(self):
         for item in self.children:
             item.disabled = True
-
         await self.message.edit(view=self)
+
 
     # When the confirm button is pressed, set the inner value to `True` and
     # stop the View from listening to more input.
@@ -24,6 +29,7 @@ class ConfirmView(discord.ui.View):
         await interaction.response.send_message('Deleting...')
         self.value = True
         self.stop()
+        await self.disable_buttons()
 
     # This one is similar to the confirmation button except sets the inner value to `False`
     @discord.ui.button(label='Cancel', style=discord.ButtonStyle.grey)
@@ -31,3 +37,4 @@ class ConfirmView(discord.ui.View):
         await interaction.response.send_message('Operation cancelled.')
         self.value = False
         self.stop()
+        await self.disable_buttons()

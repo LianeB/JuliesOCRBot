@@ -29,6 +29,7 @@ class ItemList(commands.Cog, name='Item List'):
         self.embed_dict = {}
         self.embed_average_dict = {}
         self.last_price_entry_items = {} # dict of {item : category}
+        self.last_save = {} # dict of the format {server : "area52", item : category, item : category, ...}
 
         document = self.client.BMAH_coll.find_one({"name": "all_items"})
 
@@ -138,13 +139,16 @@ class ItemList(commands.Cog, name='Item List'):
             # removes whitespaces after a hyphen --> For "Proto- Drake" -> "Proto-Drake"
             result = re.sub(r"(?<=-)\s", "", result)
 
+            self.last_save = {} # Reset last_save global variable
             scanned_items = ''
+            scanned_items_dict = {}
             document = self.client.BMAH_coll.find_one({"name": "all_items"})
             for category, item_list in document.items():
                 if category == "_id" or category == "name":
                     continue
                 for item in item_list:
                     if item.lower() in result.lower():
+                        scanned_items_dict[item] = category
                         scanned_items += f' ‣ {item}\n'
                         self.client.BMAH_coll.update_one({"name": "todays_items"}, {
                         "$inc": {f'{category}.{item}': 1},
@@ -157,6 +161,12 @@ class ItemList(commands.Cog, name='Item List'):
                 await scanning_msg.edit(content=f'No items of interest were found in this image')
             else:
                 await scanning_msg.edit(content=f'The following items were added to today\'s BMAH item list in the server **{server.title()}**:\n```{scanned_items}```')
+
+            # Keep in memory the last items scanned
+            self.last_save = {}
+            self.last_save = scanned_items_dict
+            self.last_save["server"] = server.lower()
+
         except:
             await ctx.send(f'There was an unexpected error. Error log for Dev: ```{traceback.format_exc()}```')
 
@@ -343,6 +353,9 @@ class ItemList(commands.Cog, name='Item List'):
                 continue
             self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server}':1}})
 
+        # empty last save variable
+        self.last_save = {}
+
         await ctx.send("The bot's current list of items has been successfully wiped.")
 
 
@@ -402,7 +415,6 @@ class ItemList(commands.Cog, name='Item List'):
                     document_today = self.client.BMAH_coll.find_one({"name": "todays_items"})
 
                     # if no more items in category
-                    print(f"number of items in category : {len(document_today[category])}")
                     if len(document_today[category]) == 0:
                         self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}':1}})
 
@@ -426,7 +438,6 @@ class ItemList(commands.Cog, name='Item List'):
                     document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
 
                     # if no more items in that server, delete the server
-                    print(f"number of items in server : {len(document_servers[server.lower()])}")
                     if len(document_servers[server.lower()]) == 0:
                         self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}':1}})
 
@@ -434,6 +445,85 @@ class ItemList(commands.Cog, name='Item List'):
 
         # item not in database
         await ctx.send(f'**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`')
+
+
+
+    @commands.command(aliases=['removesave', 'rms'])
+    async def removelastsave(self, ctx):
+        """Deletes the last entry did with the save command"""
+
+        # self.last_save dict of the format {server : "area52", item : category, item : category, ...}
+        if not self.last_save:
+            await ctx.send("The previous saved items have already been deleted (or list wiped, or bot rebooted)")
+            return
+        print(self.last_save)
+
+        # Confirm we want to delete these items
+        items_to_delete_str = ''
+        server = ''
+        for key, value in self.last_save.items():
+            if key == "server":
+                server = value
+            else:
+                items_to_delete_str += f" ‣ {key}\n"
+
+        view = confirmView.ConfirmView()
+        view.message = await ctx.send(f"This will delete the following items in **{server.title()}**:\n"
+                                      f"```{items_to_delete_str}```"
+                                      f"Proceed with the deletion?", view=view)
+        await view.wait()
+        if view.value is None:
+            await ctx.send('Timed out. Please re-type the command to delete.')
+
+        # Delete items from both databases
+        elif view.value:
+            for item, category in self.last_save.items():
+                if item == "server":
+                    continue
+                else:
+                    # item category database
+                    self.client.BMAH_coll.update_one({"name": "todays_items"}, {
+                        "$inc": {f'{category}.{item}': -1},
+                    }, upsert=True)
+
+                    # refresh document
+                    document_today = self.client.BMAH_coll.find_one({"name": "todays_items"})
+
+                    # if item count reaches 0, remove item from that category
+                    if document_today[f'{category}'][f'{item}'] == 0:
+                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}.{item}':1}})
+
+                    # refresh document
+                    document_today = self.client.BMAH_coll.find_one({"name": "todays_items"})
+
+                    # if no more items in category
+                    if len(document_today[category]) == 0:
+                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}':1}})
+
+                    # Document classified by server
+                    self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {
+                        "$inc": {f'{server.lower()}.{item}': -1},
+                    }, upsert=True)
+
+                    # refresh document
+                    document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+
+                    # if item count reaches 0, remove item from that server
+                    if document_servers[server.lower()][item] == 0:
+                        self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}.{item}':1}})
+
+                    # refresh document
+                    document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+
+                    # if no more items in that server, delete the server
+                    if len(document_servers[server.lower()]) == 0:
+                        self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}':1}})
+
+
+            await ctx.send(f"✅ The items have been deleted")
+
+        # Delete last save in memory
+        self.last_save = {}
 
 
 
@@ -636,8 +726,6 @@ class ItemList(commands.Cog, name='Item List'):
 
             # Remove last price for each item
             for item, category in self.last_price_entry_items.items(): # dict of {item : category}
-                print(category)
-                print(item)
                 self.client.BMAH_coll.update_one({"name": "prices"}, {"$pop": {f'{category}.{item}': 1 }}) # 1 : pop last element of array
 
             # empty self.variable
