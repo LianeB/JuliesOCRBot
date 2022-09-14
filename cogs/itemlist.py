@@ -139,7 +139,6 @@ class ItemList(commands.Cog, name='Item List'):
             # removes whitespaces after a hyphen --> For "Proto- Drake" -> "Proto-Drake"
             result = re.sub(r"(?<=-)\s", "", result)
 
-            self.last_save = {} # Reset last_save global variable
             scanned_items = ''
             scanned_items_dict = {}
             document = self.client.BMAH_coll.find_one({"name": "all_items"})
@@ -456,7 +455,6 @@ class ItemList(commands.Cog, name='Item List'):
         if not self.last_save:
             await ctx.send("The previous saved items have already been deleted (or list wiped, or bot rebooted)")
             return
-        print(self.last_save)
 
         # Confirm we want to delete these items
         items_to_delete_str = ''
@@ -519,11 +517,13 @@ class ItemList(commands.Cog, name='Item List'):
                     if len(document_servers[server.lower()]) == 0:
                         self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}':1}})
 
+                    # Delete last save in memory
+                    self.last_save = {}
+
 
             await ctx.send(f"✅ The items have been deleted")
 
-        # Delete last save in memory
-        self.last_save = {}
+
 
 
 
