@@ -649,7 +649,7 @@ class ItemList(commands.Cog, name='Item List'):
 
             while True:
                 try:
-                    msg = await self.client.wait_for('message', check=check, timeout=360)
+                    msg = await self.client.wait_for('message', check=check, timeout=120)
                     inputted_price = msg.content
                     if inputted_price.lower() == 'cancel':
                         await ctx.send("Cancelled the entry.")
@@ -661,10 +661,11 @@ class ItemList(commands.Cog, name='Item List'):
                     price_list[item] = translated_price
                     break
                 except asyncio.TimeoutError:
-                    await ctx.send("Timeout. Redo the command.")
+                    await ctx.send(f"{ctx.message.author.mention} You took too long to answer. Aborting the entry.")
                     return
                 except:
-                    await ctx.send(f'Incorrect number format. Please enter number again.\nExamples of what I accept : `200500` `200,500` `200.5k` `200,5k` `200k` `200K` (k or M)')
+                    await ctx.send(f'Incorrect number format. Please enter number again. Examples of what I accept : `200500` `200,500` `200.5k` `200,5k` `200k` `200K` (k or M)\n'
+                                   f'You can also type `skip` to skip item or `cancel` to cancel.')
 
 
         # save all items and prices to db (in db: add to item array)
@@ -725,7 +726,7 @@ class ItemList(commands.Cog, name='Item List'):
                                       f"Proceed with the deletion?", view=view)
         await view.wait()
         if view.value is None:
-            await ctx.send('Timed out. Please re-type the command to delete.')
+            await ctx.send('You took too long to answer. Please re-type the command to delete.')
         elif view.value:
 
             # Remove last price for each item
@@ -843,7 +844,7 @@ class ItemList(commands.Cog, name='Item List'):
 
         while True:
             try:
-                msg = await self.client.wait_for('message', check=check, timeout=360)
+                msg = await self.client.wait_for('message', check=check, timeout=120)
                 inputted_item = msg.content
                 if inputted_item.lower() == 'cancel':
                     await ctx.send("Cancelled the entry.")
@@ -873,7 +874,7 @@ class ItemList(commands.Cog, name='Item List'):
 
         while True:
             try:
-                msg = await self.client.wait_for('message', check=check, timeout=360)
+                msg = await self.client.wait_for('message', check=check, timeout=120)
                 inputted_price = msg.content
                 if inputted_price.lower() == 'cancel':
                     await ctx.send("Cancelled the entry.")
@@ -882,12 +883,12 @@ class ItemList(commands.Cog, name='Item List'):
                 translated_price = utils.translate_price(inputted_price)
                 break
             except asyncio.TimeoutError:
-                await ctx.send("Timeout. Redo the command.")
+                await ctx.send("You took too long to answer. Aborting the entry.")
                 return
             except:
                 await ctx.send(
-                    f'Incorrect number format. Please enter number again.\nExamples of what I accept : `200500` `200,500` `200.5k` `200,5k` `200k` `200K` (k or M)')
-
+                    f'Incorrect number format. Please enter number again. Examples of what I accept : `200500` `200,500` `200.5k` `200,5k` `200k` `200K` (k or M)\n'
+                    f'You can also type `cancel` to cancel the entry.')
 
         # add to db
         self.client.BMAH_coll.update_one({"name": "prices"}, {"$push": {f'{category}.{item}': translated_price}})
