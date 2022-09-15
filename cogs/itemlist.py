@@ -134,6 +134,10 @@ class ItemList(commands.Cog, name='Item List'):
             scanning_msg = await ctx.send("Scanning...")
             result = ocr_space_url(url=url)
 
+            if result == "Timed out waiting for results":
+                await scanning_msg.edit(content="`The service is experiencing latency issues. Please try again in a few minutes.`")
+                return
+
             # enlève les sauts de ligne  The string '\n' represents newlines and \r represents carriage returns
             result = result.replace('\n', ' ').replace('\r', '')
             # removes whitespaces after a hyphen --> For "Proto- Drake" -> "Proto-Drake"
