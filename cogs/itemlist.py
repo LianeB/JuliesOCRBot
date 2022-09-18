@@ -401,49 +401,9 @@ class ItemList(commands.Cog, name='Item List'):
                 continue
             for item in item_list:
                 if item.lower() in item_name.lower():
-
-                    # remove 1 item
-                    self.client.BMAH_coll.update_one({"name": "todays_items"}, {
-                        "$inc": {f'{category}.{item}': -1},
-                    }, upsert=True)
-
-                    # refresh document
-                    document_today = self.client.BMAH_coll.find_one({"name": "todays_items"})
-
-                    # if item count reaches 0, remove item from that category
-                    if document_today[f'{category}'][f'{item}'] == 0:
-                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}.{item}':1}})
-
-                    # refresh document
-                    document_today = self.client.BMAH_coll.find_one({"name": "todays_items"})
-
-                    # if no more items in category
-                    if len(document_today[category]) == 0:
-                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}':1}})
-
+                    # remove from the 2 databases
+                    self.remove_everywhere(category, item, server)
                     await ctx.send(f'Removed one **{item}** from today\'s list from the server **{server.title()}**')
-
-
-                    # Document classified by server
-                    # remove 1 item
-                    self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {
-                        "$inc": {f'{server.lower()}.{item}': -1},
-                    }, upsert=True)
-
-                    # refresh document
-                    document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
-
-                    # if item count reaches 0, remove item from that server
-                    if document_servers[server.lower()][item] == 0:
-                        self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}.{item}':1}})
-
-                    # refresh document
-                    document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
-
-                    # if no more items in that server, delete the server
-                    if len(document_servers[server.lower()]) == 0:
-                        self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}':1}})
-
                     return
 
         # item not in database
@@ -483,51 +443,60 @@ class ItemList(commands.Cog, name='Item List'):
                 if item == "server":
                     continue
                 else:
-                    # item category database
-                    self.client.BMAH_coll.update_one({"name": "todays_items"}, {
-                        "$inc": {f'{category}.{item}': -1},
-                    }, upsert=True)
-
-                    # refresh document
-                    document_today = self.client.BMAH_coll.find_one({"name": "todays_items"})
-
-                    # if item count reaches 0, remove item from that category
-                    if document_today[f'{category}'][f'{item}'] == 0:
-                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}.{item}':1}})
-
-                    # refresh document
-                    document_today = self.client.BMAH_coll.find_one({"name": "todays_items"})
-
-                    # if no more items in category
-                    if len(document_today[category]) == 0:
-                        self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}':1}})
-
-                    # Document classified by server
-                    self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {
-                        "$inc": {f'{server.lower()}.{item}': -1},
-                    }, upsert=True)
-
-                    # refresh document
-                    document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
-
-                    # if item count reaches 0, remove item from that server
-                    if document_servers[server.lower()][item] == 0:
-                        self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}.{item}':1}})
-
-                    # refresh document
-                    document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
-
-                    # if no more items in that server, delete the server
-                    if len(document_servers[server.lower()]) == 0:
-                        self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}':1}})
+                    # delete from the 2 databases
+                    self.remove_everywhere(category,item, server)
 
                     # Delete last save in memory
                     self.last_save = {}
 
-
             await ctx.send(f"✅ The items have been deleted")
 
 
+
+    def remove_everywhere(self, category, item, server):
+        """Remove an item from today's list. It will also delete the item from the "todays_items_servers" document"""
+        # category : Capitalized
+        # item : must be formatted as the same as DB
+        # server : lowercase (like DB)
+
+        # remove from "todays_items" database
+        self.client.BMAH_coll.update_one({"name": "todays_items"}, {
+            "$inc": {f'{category}.{item}': -1},
+        }, upsert=True)
+
+        # refresh document
+        document_today = self.client.BMAH_coll.find_one({"name": "todays_items"})
+
+        # if item count reaches 0, remove item from that category
+        if document_today[f'{category}'][f'{item}'] == 0:
+            self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}.{item}': 1}})
+
+        # refresh document
+        document_today = self.client.BMAH_coll.find_one({"name": "todays_items"})
+
+        # if no more items in category
+        if len(document_today[category]) == 0:
+            self.client.BMAH_coll.update_one({"name": "todays_items"}, {'$unset': {f'{category}': 1}})
+
+
+        # remove from "todays_items_servers" database
+        self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {
+            "$inc": {f'{server.lower()}.{item}': -1},
+        }, upsert=True)
+
+        # refresh document
+        document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+
+        # if item count reaches 0, remove item from that server
+        if document_servers[server.lower()][item] == 0:
+            self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}.{item}': 1}})
+
+        # refresh document
+        document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+
+        # if no more items in that server, delete the server
+        if len(document_servers[server.lower()]) == 0:
+            self.client.BMAH_coll.update_one({"name": "todays_items_servers"}, {'$unset': {f'{server.lower()}': 1}})
 
 
 
@@ -629,7 +598,7 @@ class ItemList(commands.Cog, name='Item List'):
                 isPresent = True
                 break
         if not isPresent:
-            await ctx.send(f"The server **{inputted_server.title()}** is either not in today's list, or there is a typo. Use `{self.client.prefix}servers` to see today's servers.")
+            await ctx.send(f"There are no items in today's list in **{inputted_server.title()}**, or there is a typo. Use `{self.client.prefix}servers` to see today's servers.")
             return
 
         # Get items from server
@@ -685,8 +654,10 @@ class ItemList(commands.Cog, name='Item List'):
                         item_category_dict[item] = category
                         break
                 if shouldBreak : break
-            # add to db
+            # add to price db
             self.client.BMAH_coll.update_one({"name": "prices"}, {"$push": {f'{category}.{item}': price}})
+            # remove from "todays_items" and "todays_items_servers"
+            self.remove_everywhere(category, item, inputted_server.lower())
 
         # save item_list in a self.variable list to keep in memory last changes done. (Overwrite last one)
         self.last_price_entry_items = item_category_dict
@@ -698,7 +669,7 @@ class ItemList(commands.Cog, name='Item List'):
         else:
             for item, price in price_list.items():
                 lst += f'\n ‣ {item} - {price:,}g'
-            await ctx.send(f"✅ the following prices have been recorded:```{lst}```")
+            await ctx.send(f"✅ the following prices have been recorded, and these items are removed from today's list:```{lst}```")
 
         # Reload averages
         self.reload_averages_dict()
