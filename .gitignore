@@ -4,3 +4,4 @@ views/__pycache__
 .idea/
 heroku-OCR-bot-creds.txt
 *.bak
+prices.json

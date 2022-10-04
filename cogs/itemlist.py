@@ -12,7 +12,7 @@ from discord.ext import commands
 import requests
 from pymongo import MongoClient
 from pytz import timezone
-from views import dbView, confirmView
+from views import dbView, confirmView, categoryView
 from cogs import utils
 with open("./config.json") as f: configData = json.load(f)
 
@@ -72,12 +72,16 @@ class ItemList(commands.Cog, name='Item List'):
             else:
                 item_obj = dict(sorted(item_obj.items()))  # sort dictionary alphabetically
                 desc = ''
+                all_averages = []
                 for item, price_list in item_obj.items():
                     if price_list:
                         desc += f'‣ {item} ─ **{int(mean(price_list)):,}g**\n'
+                        all_averages.append(int(mean(price_list)))
                     else:
                         desc += f'‣ {item} ─ **x**\n'
-                embed = discord.Embed(title="Averages", color=self.client.color, description=desc)
+                if category == 'Mage' or category == 'Priest' or category == 'Hunter' or category == 'Warlock' or category == 'Shaman' or category == 'Warrior' or category == 'Rogue' or category == 'Druid' or category == 'Paladin':
+                    desc += f'\n**FULL SET:** {sum(all_averages):,}g\n'
+                embed = discord.Embed(title=f"{category} Averages", color=self.client.color, description=desc)
 
                 self.embed_average_dict[f'{category}'] = embed
 
@@ -138,8 +142,8 @@ class ItemList(commands.Cog, name='Item List'):
                 await scanning_msg.edit(content="`The service is experiencing latency issues (slow). Please try again in a few minutes.`")
                 return
 
-            # enlève les sauts de ligne  The string '\n' represents newlines and \r represents carriage returns
-            result = result.replace('\n', ' ').replace('\r', '')
+            # enlève les sauts de ligne et espaces.  The string '\n' represents newlines and \r represents carriage returns
+            result = result.replace('\n', ' ').replace('\r', '').replace(' ', '')
             # removes whitespaces after a hyphen --> For "Proto- Drake" -> "Proto-Drake"
             result = re.sub(r"(?<=-)\s", "", result)
 
@@ -150,7 +154,18 @@ class ItemList(commands.Cog, name='Item List'):
                 if category == "_id" or category == "name":
                     continue
                 for item in item_list:
-                    if item.lower() in result.lower():
+                    # Hardcoded for certain items
+                    if item.lower().replace(' ', '') in result.lower() or \
+                            (item == "Kor'kron Shaman's Treasure" and "korikronshamanis" in result.lower()) or \
+                            (item == "Valarjar Stormwing" and "valariar" in result.lower()) or \
+                            (item == "Clutch of Ji-Kun" and "clutchof" in result.lower()) or \
+                            (item == "Reins of the Green Proto-Drake" and "reinsofthegreen" in result.lower()) or \
+                            (item == "Deathcharger's Reins" and "deathchargerisreins" in result.lower()) or \
+                            (item == "Reins of the Jade Primordial Direhorn" and "reinsoftheladeprimordialdirehorn" in result.lower()) :
+                            # item_split = item.lower().split()
+                    # if all(x in result.lower() for x in item_split):
+                    # ---> Code for if all the words in item name are present in result
+                    # --- possible issue: "Leggings of Faith" "Frostfire Robe" --> Would register also "Frostfire Leggings" and "Robe of Faith"
                         scanned_items_dict[item] = category
                         scanned_items += f' ‣ {item}\n'
                         self.client.BMAH_coll.update_one({"name": "todays_items"}, {
@@ -176,8 +191,20 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command(aliases=['items'])
-    async def list(self, ctx):
+    async def list(self, ctx, without=None):
         """Shows the list of today's items that were scanned by the bot"""
+        # content is a separate function because it is called with the selects
+        try:
+            document = self.client.BMAH_coll.find_one({"name": "todays_items"})
+            if without is None:
+                await self.list_fct(ctx.guild, ctx.channel, calledWithWithout=False, document=document, client=self.client)
+            elif without.lower() == "without":
+                view = categoryView.categoryView(document=document, client=self.client)
+                view.message = await ctx.send("This will show today's list without a set of items you select.\nWhat categories are the items from?", view=view)
+        except:
+            await ctx.send(f'There was an error. Error log for Dev: ```{traceback.format_exc()}```')
+
+    async def list_fct(self, guild, channel, calledWithWithout, document, client):
         def date_suffix(myDate):
             date_suffix = ["th", "st", "nd", "rd"]
 
@@ -188,23 +215,23 @@ class ItemList(commands.Cog, name='Item List'):
 
 
         try:
-            document = self.client.BMAH_coll.find_one({"name": "todays_items"})
-            emoji_dict = self.client.BMAH_coll.find_one({"name": "emojis"})
+            #document = self.client.BMAH_coll.find_one({"name": "todays_items"})
+            emoji_dict = client.BMAH_coll.find_one({"name": "emojis"})
 
             # check if there are items in today's items
-            if len(document.keys()) == 3:
-                embed = discord.Embed(description="There are no items in today's list", color=self.client.color)
-                embed.set_author(name="Today's BMAH item list", icon_url=ctx.guild.icon.url)
+            if not calledWithWithout and len(document.keys()) == 3:
+                embed = discord.Embed(description="There are no items in today's list", color=client.color)
+                embed.set_author(name="Today's BMAH item list", icon_url=guild.icon.url)
                 embed.timestamp = datetime.datetime.utcnow()
-                await ctx.send(embed=embed)
+                await channel.send(embed=embed)
                 return
 
             now = datetime.datetime.now().strftime('%A, %B %d')
             date_suffix = date_suffix(int(datetime.datetime.now().strftime('%d')))
-            embed = discord.Embed(description=f"The BMAH item list for **{now}{date_suffix}** is the following:", color=self.client.color) #title=f'{emoji} BMAH item list - {now}{date_suffix}')
-            embed.set_author(name=f'BMAH item list', icon_url=ctx.guild.icon.url) #TODO: uncomment?
+            embed = discord.Embed(description=f"The BMAH item list for **{now}{date_suffix}** is the following:", color=client.color) #title=f'{emoji} BMAH item list - {now}{date_suffix}')
+            embed.set_author(name=f'BMAH item list', icon_url=guild.icon.url) #TODO: uncomment?
             embed.timestamp = datetime.datetime.now()
-            embed.set_footer(text=ctx.guild.name)
+            embed.set_footer(text=guild.name)
 
             # get dict items
             item_list = [*document] # list of dict keys
@@ -272,15 +299,15 @@ class ItemList(commands.Cog, name='Item List'):
                 embed.add_field(name="\u200b", value="\u200b")
                 embed.add_field(name="\u200b", value="\u200b")
 
-            await ctx.message.delete()
-            await ctx.send(embed=embed)
+            #await ctx.message.delete()
+            await channel.send(embed=embed)
         except:
-            await ctx.send(f'There was an error. Error log for Dev: ```{traceback.format_exc()}```')
+            await channel.send(f'There was an error. Error log for Dev: ```{traceback.format_exc()}```')
 
 
 
 
-    @commands.command(aliases=['server'])
+    @commands.command(aliases=['server', 'realms'])
     async def servers(self, ctx, *, item_given=None):
         """Shows the list of today's items that were scanned by the bot, classified by server"""
         try:
@@ -529,6 +556,7 @@ class ItemList(commands.Cog, name='Item List'):
 
                 # update DB
                 self.client.BMAH_coll.update_one({"name": "all_items"}, {"$push": {f'{category_name}' : capitalized_name}})
+                self.client.BMAH_coll.update_one({"name": "prices"}, {"$set": {f'{category_name}.{capitalized_name}': []}})
                 await ctx.send(f'Alright, the item **{capitalized_name}** was entered in the database under the **{category.capitalize()}** category')
 
                 # reload the db command's embed for that category
@@ -554,6 +582,8 @@ class ItemList(commands.Cog, name='Item List'):
                     await self.reload_embed_dict(category_name)
                     return
         await ctx.send(f'The item **{item_name}** does not exist in the database.')
+
+        # NOTE: Did not code the removal of the item in the 'prices' database in case we want to keep the historical data.
 
 
     async def reload_embed_dict(self, category_name):
