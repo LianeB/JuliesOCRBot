@@ -75,8 +75,8 @@ class ItemList(commands.Cog, name='Item List'):
                 all_averages = []
                 for item, price_list in item_obj.items():
                     if price_list:
-                        desc += f'‣ {item} ─ **{int(mean(price_list)):,}g**\n'
-                        all_averages.append(int(mean(price_list)))
+                        desc += f'‣ {item} ─ **{int(mean(self.get_price(price_list))):,}g**\n'
+                        all_averages.append(int(mean(self.get_price(price_list))))
                     else:
                         desc += f'‣ {item} ─ **x**\n'
                 if category == 'Mage' or category == 'Priest' or category == 'Hunter' or category == 'Warlock' or category == 'Shaman' or category == 'Warrior' or category == 'Rogue' or category == 'Druid' or category == 'Paladin':
@@ -143,7 +143,7 @@ class ItemList(commands.Cog, name='Item List'):
                 return
 
             # enlève les sauts de ligne et espaces.  The string '\n' represents newlines and \r represents carriage returns
-            result = result.replace('\n', ' ').replace('\r', '').replace(' ', '')
+            result = result.replace('\n', ' ').replace('\r', '').replace(' ', '').replace('•', '-')
             # removes whitespaces after a hyphen --> For "Proto- Drake" -> "Proto-Drake"
             result = re.sub(r"(?<=-)\s", "", result)
 
@@ -685,7 +685,7 @@ class ItemList(commands.Cog, name='Item List'):
                         break
                 if shouldBreak : break
             # add to price db
-            self.client.BMAH_coll.update_one({"name": "prices"}, {"$push": {f'{category}.{item}': price}})
+            self.client.BMAH_coll.update_one({"name": "prices"}, {"$push": {f'{category}.{item}': f'{price}-{inputted_server.title()}'}})
             # remove from "todays_items" and "todays_items_servers"
             self.remove_everywhere(category, item, inputted_server.lower())
 
@@ -698,7 +698,7 @@ class ItemList(commands.Cog, name='Item List'):
             await ctx.send("No prices were registered.")
         else:
             for item, price in price_list.items():
-                lst += f'\n ‣ {item} - {price:,}g'
+                lst += f'\n ‣ {item} - {price:,}g - {inputted_server.title()}'
             await ctx.send(f"✅ the following prices have been recorded, and these items are removed from today's list:```{lst}```")
 
         # Reload averages
@@ -774,7 +774,7 @@ class ItemList(commands.Cog, name='Item List'):
             embed = discord.Embed(color=self.client.color)
             embed.set_author(name="Averages", icon_url=ctx.guild.icon.url)
             if price_list:
-                desc = f"The average price for **{formatted_item}** is:\n\n**{int(mean(price_list)):,}g**"
+                desc = f"The average price for **{formatted_item}** is:\n\n**{int(mean(self.get_price(price_list))):,}g**"
             else:
                 desc = f"The average price for **{formatted_item}** is:\n\n**No data**"
             embed.description = desc
@@ -790,41 +790,69 @@ class ItemList(commands.Cog, name='Item List'):
 
     @commands.command(aliases=['prices', 'p'])
     async def price(self, ctx, *, item_name):
-        """Shows all the past prices an item had, as well as its average"""
-        # verify item exists
-        document = self.client.BMAH_coll.find_one({"name": "prices"})
-        del document["name"]
-        del document["_id"]
-        price_list = []
-        formatted_item = ''
-        found=False
-        for category_name, items_obj in document.items():
-            keysList = list(items_obj.keys())
-            for item in keysList:
-                if item_name.lower() in item.lower():
-                    price_list = document[category_name][item]
-                    formatted_item = item
-                    found=True
-                    break
-        if not found:
-            await ctx.send(f"**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`")
-            return
+        try:
+            """Shows all the past prices an item had, as well as its average"""
+            # verify item exists
+            document = self.client.BMAH_coll.find_one({"name": "prices"})
+            del document["name"]
+            del document["_id"]
+            price_list = []
+            formatted_item = ''
+            found=False
+            for category_name, items_obj in document.items():
+                keysList = list(items_obj.keys())
+                for item in keysList:
+                    if item_name.lower() in item.lower():
+                        price_list = document[category_name][item]
+                        formatted_item = item
+                        found=True
+                        break
+            if not found:
+                await ctx.send(f"**{item_name}** does not exist in the database. Make sure your spelling is correct. You can see all items in the database with `{self.client.prefix}db`")
+                return
 
-        # Create embed
-        embed = discord.Embed(color=self.client.color)
-        embed.set_author(name="Prices", icon_url=ctx.guild.icon.url)
-        if price_list:
-            prices = ''
-            for price in price_list:
-                prices += f"{price:,}g\n"
-            desc = f"The past prices for **{formatted_item}** are the following:\n\n" \
-                   f"{prices}" \
-                   f"\nAverage : **{int(mean(price_list)):,}g**"
+            # Create embed
+            embed = discord.Embed(color=self.client.color)
+            embed.set_author(name="Prices", icon_url=ctx.guild.icon.url)
+            # if price exists in db for this item
+            if price_list:
+                # List is strings of price and server, or simply the price ["442500-Yseras", "316000-Deathwing", "22000"]
+                prices_servers_str = ''
+                for price_server in price_list:
+                    prices_servers_str += f"{self.get_price(price_server):,}g ─ *{self.get_server(price_server)}*\n"
+                desc = f"The past prices for **{formatted_item}** are the following:\n\n" \
+                       f"{prices_servers_str}" \
+                       f"\nAverage : **{int(mean(self.get_price(price_list))):,}g**"
+            else:
+                desc = f"The past prices for **{formatted_item}** are the following:\n\n" \
+                       f"No data"
+            embed.description = desc
+            await ctx.send(embed=embed)
+        except:
+            await ctx.send(f'There was an unexpected error. Error log for Dev: ```{traceback.format_exc()}```')
+
+
+    def get_price(self, price_string):
+        """Get price out of the prices database. Format is "442500-Yseras" or 442500. Shoots only the price in int format."""
+        if type(price_string) is int:
+            return price_string
+        elif type(price_string) is str:
+            # string format of type "442500-Yseras"
+            price_int = int(price_string.split('-')[0])
+            return price_int
+        # if list of prices
+        elif type(price_string) is list:
+            return [self.get_price(x) for x in price_string]
+
+
+    def get_server(self, price_string):
+        """Get server out of the prices database. Format is "442500-Yseras" or 442500. Shoots only the server, or "x" if none set."""
+        if type(price_string) is int:
+            return "x"
         else:
-            desc = f"The past prices for **{formatted_item}** are the following:\n\n" \
-                   f"No data"
-        embed.description = desc
-        await ctx.send(embed=embed)
+            # string format of type "442500-Yseras"
+            server_name = price_string.split('-')[1]
+            return server_name
 
 
 
@@ -835,13 +863,28 @@ class ItemList(commands.Cog, name='Item List'):
         def check(m):
             return m.author == ctx.message.author
 
-        # Prompt item name
-        await ctx.send(content=f"Enter item name:")
+
+        # Prompt server
+        await ctx.send(content=f"Enter server:")
         all_items_document = self.client.BMAH_coll.find_one({"name": "all_items"})
         category = ''
         item = ''
         item_category_dict = {}
         found = False
+
+        try:
+            msg = await self.client.wait_for('message', check=check, timeout=120)
+            inputted_server = msg.content
+            if inputted_server.lower() == 'cancel':
+                await ctx.send("Cancelled the entry.")
+                return
+        except asyncio.TimeoutError:
+            await ctx.send("You took too long to answer. Aborting the entry.")
+            return
+
+
+        # Prompt item name
+        await ctx.send(content=f"Enter item name:")
 
         while True:
             try:
@@ -892,13 +935,13 @@ class ItemList(commands.Cog, name='Item List'):
                     f'You can also type `cancel` to cancel the entry.')
 
         # add to db
-        self.client.BMAH_coll.update_one({"name": "prices"}, {"$push": {f'{category}.{item}': translated_price}})
+        self.client.BMAH_coll.update_one({"name": "prices"}, {"$push": {f'{category}.{item}': f'{translated_price}-{inputted_server.title()}'}})
 
         # Fill self.variable
         self.last_price_entry_items = item_category_dict
 
         # Confirmation
-        lst = f' ‣ {item} - {translated_price:,}g'
+        lst = f' ‣ {item} - {translated_price:,}g - {inputted_server.title()}'
         await ctx.send(f"✅ the following price has been recorded:```{lst}```")
 
         # Reload averages
