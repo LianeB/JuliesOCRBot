@@ -280,7 +280,6 @@ class Boosts(commands.Cog, name='Sales'):
                         userid_dict.setdefault(object_sale["discordTag"], []).append(object_sale["buyerid"])
                         multiple_dict.setdefault(object_sale["discordTag"], []).append(object_sale["Multiple"])
 
-
                 for db_discordTag, list_items in playeritems_dict.items():
                     if player is not None:
                         if db_discordTag == discordTag:
@@ -291,7 +290,7 @@ class Boosts(commands.Cog, name='Sales'):
                     last_item_number = len(list_items)
                     try:
                         # if buyerid exists, can convert to user
-                        user = await commands.UserConverter().convert(ctx, db_discordTag)
+                        user = await commands.UserConverter().convert(ctx, str(userid_dict[db_discordTag][0]))
                         item_info = f'{user.mention}\n'
                     except:
                         # buyerid doesnt exist, use just discord tag
@@ -383,18 +382,6 @@ class Boosts(commands.Cog, name='Sales'):
 
 
 
-
-    @commands.command(hidden=True)
-    async def test(self, ctx):
-        pages = [
-            discord.Embed(title="page 1"),
-            discord.Embed(title="page 2"),
-            discord.Embed(title="page 3"),
-            discord.Embed(title="page 4"),
-            discord.Embed(title="page 5")
-        ]
-        view = paginatorView.paginatorView(pages)
-        view.message = await ctx.send(embed=pages[0], view=view)
 
 async def setup(client):
     await client.add_cog(Boosts(client))
