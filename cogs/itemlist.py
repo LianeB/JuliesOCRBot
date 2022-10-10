@@ -154,7 +154,7 @@ class ItemList(commands.Cog, name='Item List'):
             # removes whitespaces after a hyphen --> For "Proto- Drake" -> "Proto-Drake"
             result = re.sub(r"(?<=-)\s", "", result)
 
-            scanned_items = ''
+            scanned_items = 'diff\n'
             scanned_items_dict = {}
             document = self.client.BMAH_coll.find_one({"name": "all_items"})
             for category, item_list in document.items():
@@ -174,7 +174,6 @@ class ItemList(commands.Cog, name='Item List'):
                     # ---> Code for if all the words in item name are present in result
                     # --- possible issue: "Leggings of Faith" "Frostfire Robe" --> Would register also "Frostfire Leggings" and "Robe of Faith"
                         scanned_items_dict[item] = category
-                        scanned_items += f' ‣ {item}\n'
                         self.client.BMAH_coll.update_one({"name": "todays_items"}, {
                         "$inc": {f'{category}.{item}': 1},
                         }, upsert=True)
@@ -182,7 +181,20 @@ class ItemList(commands.Cog, name='Item List'):
                         "$inc": {f'{server.lower()}.{item}': 1},
                         }, upsert=True)
 
-            if scanned_items == '':
+                        # Highlight item in green if there's a current sale for it
+                        sales_doc = self.client.BMAH_coll.find_one({"name": "sales"})
+                        has_sale = False
+                        for item_name, sales_list in sales_doc["Sales"].items():
+                            if item_name.lower() in item.lower():
+                                scanned_items += f'+‣ {item} (Requested by {sales_list[0]["discordTag"]})\n'
+                                has_sale=True
+                                break
+                        if not has_sale:
+                            scanned_items += f' ‣ {item}\n'
+
+
+
+            if scanned_items == 'diff\n':
                 await scanning_msg.edit(content=f'No items of interest were found in this image')
             else:
                 await scanning_msg.edit(content=f'The following items were added to today\'s BMAH item list in the server **{server.title()}**:\n```{scanned_items}```')
