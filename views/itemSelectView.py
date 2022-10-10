@@ -37,7 +37,6 @@ class itemSelect(discord.ui.Select['itemSelect']):
                         del items_object[item]
                         if self.view.document[category] == {}:
                             del doc_without_items[category]
-            print(doc_without_items)
             await itemlist.ItemList.list_fct(self.view.client.get_cog("Item list"), interaction.guild, interaction.channel, calledWithWithout=True, document=doc_without_items, client=self.view.client)
             await interaction.response.defer()
         except:

@@ -7,7 +7,7 @@ import time
 import traceback
 import discord
 import typing
-from statistics import mean
+from statistics import mean, median
 from discord.ext import commands
 import requests
 from pymongo import MongoClient
@@ -28,6 +28,7 @@ class ItemList(commands.Cog, name='Item List'):
         self.client = client
         self.embed_dict = {}
         self.embed_average_dict = {}
+        self.embed_median_dict = {}
         self.last_price_entry_items = {} # dict of {item : category}
         self.last_save = {} # dict of the format {server : "area52", item : category, item : category, ...}
 
@@ -60,10 +61,10 @@ class ItemList(commands.Cog, name='Item List'):
 
             self.embed_dict[f'{category}'] = embed
 
-        self.reload_averages_dict()
+        self.reload_averages_medians_dict()
 
 
-    def reload_averages_dict(self):
+    def reload_averages_medians_dict(self):
         document = self.client.BMAH_coll.find_one({"name": "prices"})
 
         for category, item_obj in document.items():
@@ -71,29 +72,35 @@ class ItemList(commands.Cog, name='Item List'):
                 continue
             else:
                 item_obj = dict(sorted(item_obj.items()))  # sort dictionary alphabetically
-                desc = ''
+                desc_avg = ''
+                desc_med = ''
                 all_averages = []
+                all_medians = []
                 for item, price_list in item_obj.items():
                     if price_list:
-                        desc += f'‣ {item} ─ **{int(mean(self.get_price(price_list))):,}g**\n'
+                        desc_avg += f'‣ {item} ─ **{int(mean(self.get_price(price_list))):,}g**\n'
+                        desc_med += f'‣ {item} ─ **{int(median(self.get_price(price_list))):,}g**\n'
                         all_averages.append(int(mean(self.get_price(price_list))))
+                        all_medians.append(int(median(self.get_price(price_list))))
                     else:
-                        desc += f'‣ {item} ─ **x**\n'
+                        desc_avg += f'‣ {item} ─ **x**\n'
+                        desc_med += f'‣ {item} ─ **x**\n'
                 if category == 'Mage' or category == 'Priest' or category == 'Hunter' or category == 'Warlock' or category == 'Shaman' or category == 'Warrior' or category == 'Rogue' or category == 'Druid' or category == 'Paladin':
-                    desc += f'\n**FULL SET:** {sum(all_averages):,}g\n'
-                embed = discord.Embed(title=f"{category} Averages", color=self.client.color, description=desc)
+                    desc_avg += f'\n**FULL SET:** {sum(all_averages):,}g\n'
+                    desc_med += f'\n**FULL SET:** {sum(all_medians):,}g\n'
+                embed_avg = discord.Embed(title=f"{category} Averages", color=self.client.color, description=desc_avg)
+                embed_med = discord.Embed(title=f"{category} Medians", color=self.client.color, description=desc_med)
 
-                self.embed_average_dict[f'{category}'] = embed
+                self.embed_average_dict[f'{category}'] = embed_avg
+                self.embed_median_dict[f'{category}'] = embed_med
 
     @commands.Cog.listener()
     async def on_ready(self):
-        #DiscordComponents(self.client)
         print('Bot is online.')
 
 
     @commands.command()
     async def ping(self, ctx):
-        # Description of command (command.help)
         """Responds with \"Pong!\""""
         await ctx.send('Pong!')
 
@@ -355,12 +362,12 @@ class ItemList(commands.Cog, name='Item List'):
                         continue
                     for item in item_list:
                         if item.lower() in item_given.lower():
-                            servers += f'\n{server.capitalize()}'
+                            servers += f'\n ‣ {server.capitalize()}'
 
                 if not servers:
-                    servers = 'The item given is not in today\'s list. (or check for spelling errors)'
+                    servers = f'**{item_given.title()}** is not in today\'s list, or there is a spelling mistake.'
                 else:
-                    servers = f'**{item_given}** can be found in:' + servers
+                    servers = f'**{item_given.title()}** can be found in:' + f"```{servers}```"
 
                 await ctx.send(servers)
         except:
@@ -702,7 +709,7 @@ class ItemList(commands.Cog, name='Item List'):
             await ctx.send(f"✅ the following prices have been recorded, and these items are removed from today's list:```{lst}```")
 
         # Reload averages
-        self.reload_averages_dict()
+        self.reload_averages_medians_dict()
 
 
 
@@ -720,7 +727,7 @@ class ItemList(commands.Cog, name='Item List'):
         items_to_delete_str = ''
         for item, category in self.last_price_entry_items.items():
             price_list = document[category][item]
-            items_to_delete_str += f" ‣ {item} - {price_list[-1]:,}g\n"
+            items_to_delete_str += f" ‣ {item} - {self.get_price(price_list[-1]):,}g - {self.get_server(price_list[-1])}\n"
         view = confirmView.ConfirmView()
         view.message = await ctx.send(f"This will delete the following item prices:\n"
                                       f"```{items_to_delete_str}```"
@@ -741,14 +748,23 @@ class ItemList(commands.Cog, name='Item List'):
             await ctx.send(f"✅ the prices have been deleted")
 
             # Reload averages
-            self.reload_averages_dict()
+            self.reload_averages_medians_dict()
 
 
 
     @commands.command(aliases=['avg', 'average'])
     async def averages(self, ctx, *, item_name=None):
         """Shows the average price of items"""
+        await self.avg_or_med_command(ctx, item_name, "Averages")
 
+
+    @commands.command(aliases=['median', 'med'])
+    async def medians(self, ctx, *, item_name=None):
+        """Shows the median price of items"""
+        await self.avg_or_med_command(ctx, item_name, "Medians")
+
+
+    async def avg_or_med_command(self, ctx, item_name, avg_or_med):
         # If an item is specifed, print avg of just that item
         if item_name:
             #verify good item name
@@ -772,18 +788,18 @@ class ItemList(commands.Cog, name='Item List'):
                 return
             # Create embed
             embed = discord.Embed(color=self.client.color)
-            embed.set_author(name="Averages", icon_url=ctx.guild.icon.url)
+            embed.set_author(name=avg_or_med, icon_url=ctx.guild.icon.url)
             if price_list:
-                desc = f"The average price for **{formatted_item}** is:\n\n**{int(mean(self.get_price(price_list))):,}g**"
+                desc = f"The {'average' if avg_or_med == 'Averages' else 'median'} price for **{formatted_item}** is:\n\n**{(int(mean(self.get_price(price_list))) if avg_or_med == 'Averages' else int(median(self.get_price(price_list)))):,}g**"
             else:
-                desc = f"The average price for **{formatted_item}** is:\n\n**No data**"
+                desc = f"The {'average' if avg_or_med == 'Averages' else 'median'} price for **{formatted_item}** is:\n\n**No data**"
             embed.description = desc
             await ctx.send(embed=embed)
 
         # No item specified
         else:
-            embed = discord.Embed(title="Averages", color=self.client.color, description="Click on the category in which you want to see the items")
-            view = dbView.dbView(self.embed_average_dict)
+            embed = discord.Embed(title=avg_or_med, color=self.client.color, description="Click on the category in which you want to see the items")
+            view = dbView.dbView(self.embed_average_dict if avg_or_med == 'Averages' else self.embed_median_dict)
             view.message = await ctx.send(embed=embed, view=view)
 
 
@@ -822,7 +838,8 @@ class ItemList(commands.Cog, name='Item List'):
                     prices_servers_str += f"{self.get_price(price_server):,}g ─ *{self.get_server(price_server)}*\n"
                 desc = f"The past prices for **{formatted_item}** are the following:\n\n" \
                        f"{prices_servers_str}" \
-                       f"\nAverage : **{int(mean(self.get_price(price_list))):,}g**"
+                       f"\nAverage : **{int(mean(self.get_price(price_list))):,}g**" \
+                       f"\nMedian : **{int(median(self.get_price(price_list))):,}g**"
             else:
                 desc = f"The past prices for **{formatted_item}** are the following:\n\n" \
                        f"No data"
@@ -945,7 +962,7 @@ class ItemList(commands.Cog, name='Item List'):
         await ctx.send(f"✅ the following price has been recorded:```{lst}```")
 
         # Reload averages
-        self.reload_averages_dict()
+        self.reload_averages_medians_dict()
 
 
 
@@ -989,7 +1006,7 @@ def ocr_space_url(url, overlay=False, api_key='7d59c9f1ee88957', language='eng')
     try:
         result_string = results_dict["ParsedResults"][0]["ParsedText"] # result string
     except:
-        print("Error in ParsedResults! Saved the dict to database.")
+        print("Error in ParsedResults... results_dict value:")
         print(f'results_dict:\n{results_dict}')
         results_dict["datetime"] = datetime.datetime.now()
 

@@ -17,40 +17,6 @@ class Utils(commands.Cog, name='Utils'):
         pass
 
 
-
-
-
-'''
-    @commands.command()
-    async def paginator(self, ctx, paginationList, loading_msg: discord.Message):
-        current = 0
-        await loading_msg.edit(
-            content = '',
-            embed = paginationList[current],
-            components = [
-                [
-                    Button(
-                        label = "Prev",
-                        id = "back",
-                        style = ButtonStyle.red
-                    ),
-                    Button(
-                        label = f"Page {current + 1}/{len(paginationList)}",
-                        id = "cur",
-                        style = ButtonStyle.grey,
-                        disabled = True
-                    ),
-                    Button(
-                        label = "Next",
-                        id = "front",
-                        style = ButtonStyle.red
-                    )
-                ]
-            ]
-        )
-'''
-
-
 def translate_price(price):
     '''translate k or M to int. Throws error if incorrect format'''
     if price.endswith('k') or price.endswith('K'):
