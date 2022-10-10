@@ -22,8 +22,8 @@ class Boosts(commands.Cog, name='Sales'):
 
 
     #TODO: if sales in ;boosts by item need to be in order, add a datetime field in Sales
-    @commands.command(aliases=['b', 'paid'])
-    async def buyer(self, ctx, buyer, price, *, inputted_item):
+    @commands.command(aliases=['b', 'buyer'])
+    async def paid(self, ctx, buyer, price, *, inputted_item):
         """Saves the boost to the list of active boosts"""
 
         #get buyer user object
@@ -235,7 +235,7 @@ class Boosts(commands.Cog, name='Sales'):
 
     @commands.command(aliases=["lb", "buyerslist", "listbuyers"])
     async def boosts(self, ctx, by="by", categorize_by="item", player=None):
-        """Lists the active boosts. Can list by item or by player (default is by player). Type literally `;listbuyers by player` or `;listbuyers by item`"""
+        """Lists the active boosts. Can list by item or by player (default is by item). Type literally `;boosts by player` or `;boosts by item`"""
 
         # Get discord Tag depending if player is str or User object
         user = None
@@ -384,7 +384,7 @@ class Boosts(commands.Cog, name='Sales'):
 
 
 
-    @commands.command()
+    @commands.command(hidden=True)
     async def test(self, ctx):
         pages = [
             discord.Embed(title="page 1"),

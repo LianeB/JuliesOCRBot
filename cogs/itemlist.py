@@ -125,7 +125,7 @@ class ItemList(commands.Cog, name='Item List'):
 
     @commands.command(aliases=['scan', 's'])
     async def save(self, ctx, *, server): #input_url: typing.Optional[str]
-        """Will save the BMAH items of interest from photo to the Database. Call this command with an attached image or a URL to an image"""
+        """Will save the BMAH items of interest from photo to the Database. Call this command with an attached image"""
         try:
             '''
             if input_url is None:
@@ -806,8 +806,8 @@ class ItemList(commands.Cog, name='Item List'):
 
     @commands.command(aliases=['prices', 'p'])
     async def price(self, ctx, *, item_name):
+        """Shows all the past prices an item had, as well as its average and median"""
         try:
-            """Shows all the past prices an item had, as well as its average"""
             # verify item exists
             document = self.client.BMAH_coll.find_one({"name": "prices"})
             del document["name"]
