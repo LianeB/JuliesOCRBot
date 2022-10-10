@@ -22,8 +22,8 @@ class Boosts(commands.Cog, name='Sales'):
 
 
     #TODO: if sales in ;boosts by item need to be in order, add a datetime field in Sales
-    @commands.command(aliases=['b', 'buyer'])
-    async def paid(self, ctx, buyer, price, *, inputted_item):
+    @commands.command(aliases=['b'])
+    async def buyer(self, ctx, buyer, price, *, inputted_item):
         """Saves the boost to the list of active boosts"""
 
         #get buyer user object
@@ -38,6 +38,35 @@ class Boosts(commands.Cog, name='Sales'):
             formatted_price = utils.translate_price(price)
         except:
             await ctx.send(f'Incorrect number format. Examples of what I accept : `200500` `200,500` `200.5k` `200,5k` `200k` `200K` (k or M)')
+            return
+
+        def check(m):
+            return m.user == ctx.message.author
+
+        try:
+            # Ask for booster
+            select = discord.ui.Select(custom_id='boosterSelect', placeholder="Select a user", options=[discord.SelectOption(label="Xjd"), discord.SelectOption(label="Gunner")])
+            view = discord.ui.View()
+            view.add_item(select)
+            msg = await ctx.send(content=f"Who did the sale?", view=view)
+            interaction = await self.client.wait_for('interaction', check=check, timeout=60)
+            await interaction.response.defer()
+            booster = interaction.data['values'][0] #interaction.data = {'values': ['Xjd'], 'custom_id': 'boosterSelect', 'component_type': 3}
+
+            # Ask if paid
+            button_yes = discord.ui.Button(custom_id='Yes', style=discord.ButtonStyle.green, label="Yes")
+            button_no = discord.ui.Button(custom_id='No', style=discord.ButtonStyle.red, label="No")
+            view = discord.ui.View()
+            view.add_item(button_yes)
+            view.add_item(button_no)
+            await ctx.send(content=f"Is the item paid?", view=view)
+            interaction = await self.client.wait_for('interaction', check=check, timeout=5)
+            for item in view.children:
+                item.disabled = True
+            await interaction.response.edit_message(view=view)
+            isPaid = True if interaction.data['custom_id'] == 'Yes' else False
+        except:
+            await ctx.send(f"{ctx.author.mention} You took too long to enter the sale. Entry aborted.")
             return
 
         # check for keywords
@@ -68,7 +97,7 @@ class Boosts(commands.Cog, name='Sales'):
                         for item_full_name in fullset_list:
                             inputted_items_official_names_list.append(item_full_name)
                             #todo: uncomment
-                            self.client.BMAH_coll.update_one({"name": "sales"}, { "$push": {f'Sales.{item_full_name}': {"buyerid": user.id if user else "", "discordTag": str(user) if user else buyer, "Price": formatted_price, "Multiple": f'{count}/{len(fullset_list)}'}}}, upsert=True)
+                            self.client.BMAH_coll.update_one({"name": "sales"}, { "$push": {f'Sales.{item_full_name}': {"buyerid": user.id if user else "", "discordTag": str(user) if user else buyer, "Price": formatted_price, "Multiple": f'{count}/{len(fullset_list)}', "Booster": booster, "isPaid": isPaid}}}, upsert=True)
                             count += 1
                     else:
                         canBreak = False
@@ -81,7 +110,7 @@ class Boosts(commands.Cog, name='Sales'):
                                         if any(keyword in official_item_name.lower() for keyword in synonym_list):
                                             inputted_items_official_names_list.append(official_item_name)
                                             #TODO: UNCOMMENT
-                                            self.client.BMAH_coll.update_one({"name": "sales"}, { "$push": {f'Sales.{official_item_name}': {"buyerid": user.id if user else "", "discordTag": str(user) if user else buyer, "Price": formatted_price, "Multiple": f'{count}/{len(inputted_items_list)}'}}}, upsert=True)
+                                            self.client.BMAH_coll.update_one({"name": "sales"}, { "$push": {f'Sales.{official_item_name}': {"buyerid": user.id if user else "", "discordTag": str(user) if user else buyer, "Price": formatted_price, "Multiple": f'{count}/{len(inputted_items_list)}', "Booster": booster, "isPaid": isPaid}}}, upsert=True)
                                             canBreak = True
                                             count += 1
                                         if canBreak: break
@@ -94,7 +123,7 @@ class Boosts(commands.Cog, name='Sales'):
                 for item_name in inputted_items_official_names_list:
                     items_formatted += f" ‣ {item_name} ({count}/{len(inputted_items_official_names_list)})\n"
                     count += 1
-                await ctx.send(f'💰 Added a sale of **{formatted_price:,}g** for buyer {user.mention if user else ""}(**{str(user) if user else buyer}**) for the item(s) ```{items_formatted}```')
+                await ctx.send(f'💰 Added a sale of **{formatted_price:,}g** ({"paid" if isPaid else "unpaid"}) for buyer {user.mention if user else ""}(**{str(user) if user else buyer}**), by {booster}, for the item(s) ```{items_formatted}```')
                 return
 
         # only 1 item inputted
@@ -108,8 +137,8 @@ class Boosts(commands.Cog, name='Sales'):
                     if inputted_item.lower() in item.lower():
                         # item exists, add to sales DB
                         #TODO: UNCOMMENT
-                        self.client.BMAH_coll.update_one({"name": "sales"}, { "$push": {f'Sales.{item}': {"buyerid": user.id if user else "", "discordTag": str(user) if user else buyer, "Price": formatted_price, "Multiple": ""}}}, upsert=True)
-                        await ctx.send(f'💰 Added a sale of **{formatted_price:,}g** for buyer {user.mention if user else ""}(**{str(user) if user else buyer}**) for the item ``` ‣ {item}```')
+                        self.client.BMAH_coll.update_one({"name": "sales"}, { "$push": {f'Sales.{item}': {"buyerid": user.id if user else "", "discordTag": str(user) if user else buyer, "Price": formatted_price, "Multiple": "", "Booster": booster, "isPaid": isPaid}}}, upsert=True)
+                        await ctx.send(f'💰 Added a sale of **{formatted_price:,}g** ({"paid" if isPaid else "unpaid"}) for buyer {user.mention if user else ""}(**{str(user) if user else buyer}**), by {booster}, for the item ``` ‣ {item}```')
                         return
 
             # Did not find item
@@ -232,6 +261,34 @@ class Boosts(commands.Cog, name='Sales'):
         return correct_item_names
 
 
+    @commands.command()
+    async def paid(self, ctx, buyer, *, item_name):
+        """Change the status of a sale from 'not paid' to 'paid' """
+
+        # Get discord Tag depending if player is str or User object
+        try:
+            user = await commands.UserConverter().convert(ctx, str(buyer))
+            discordTag = str(user)
+        except:
+            discordTag = buyer
+
+        # update DB
+        document = self.client.BMAH_coll.find_one({"name": "sales"})
+        found=False
+        for item_full_name, sale_list in document["Sales"].items():
+            if item_name.lower() in item_full_name.lower():
+                print("in if #1")
+                idx = 0
+                for sale_object in sale_list:
+                    if discordTag.lower() in sale_object["discordTag"].lower():
+                        print("in if #2")
+                        self.client.BMAH_coll.update_one({"name": "sales"}, {"$set": {f'Sales.{item_full_name}.{idx}.isPaid': True}}, upsert=True)
+                        await ctx.send(f'✅ **{item_full_name}** sale for **{discordTag}** is now paid')
+                        found=True
+                        break
+                    idx += 1
+        if not found:
+            await ctx.send(f'❌ **{item_name.title()}** sale for **{discordTag}** was not found. Make sure there are no spelling mistakes. You may see all current sales with `;boosts`')
 
     @commands.command(aliases=["lb", "buyerslist", "listbuyers"])
     async def boosts(self, ctx, by="by", categorize_by="item", player=None):
@@ -266,6 +323,8 @@ class Boosts(commands.Cog, name='Sales'):
             gold_dict = {}
             userid_dict = {}
             multiple_dict = {}
+            isPaid_dict = {}
+            booster_dict = {}
             count_fields = 0
             self.embed_list = []
             qty_per_page = 8
@@ -279,6 +338,8 @@ class Boosts(commands.Cog, name='Sales'):
                         gold_dict.setdefault(object_sale["discordTag"],[]).append(object_sale["Price"])
                         userid_dict.setdefault(object_sale["discordTag"], []).append(object_sale["buyerid"])
                         multiple_dict.setdefault(object_sale["discordTag"], []).append(object_sale["Multiple"])
+                        isPaid_dict.setdefault(object_sale["discordTag"], []).append(object_sale["isPaid"])
+                        booster_dict.setdefault(object_sale["discordTag"], []).append(object_sale["Booster"])
 
                 for db_discordTag, list_items in playeritems_dict.items():
                     if player is not None:
@@ -298,8 +359,11 @@ class Boosts(commands.Cog, name='Sales'):
 
 
                     for item in list_items:
+                        isPaid = isPaid_dict[db_discordTag][item_count - 1]
                         item_info += f'{item_count}. **{item.title()}** {multiple_dict[db_discordTag][item_count-1]}- '
-                        item_info += f'{gold_dict[db_discordTag][item_count-1]:,}g\n' #price
+                        item_info += f'{gold_dict[db_discordTag][item_count-1]:,}g ' #price
+                        item_info += f'{"✅ paid" if isPaid else "❌ not paid"} - '  # isPaid
+                        item_info += f'{booster_dict[db_discordTag][item_count-1]}\n'  # booster
                         item_count += 1
                     if item_count == last_item_number:
                         item_info += "\u200b"
@@ -345,9 +409,11 @@ class Boosts(commands.Cog, name='Sales'):
                 for object_sale in sales_list:
                     try:
                         user = await commands.UserConverter().convert(ctx, str(object_sale["buyerid"]))
-                        info += f'{count_buyers}. {user.mention} - {object_sale["Price"]:,}g\n'
+                        info += f'{count_buyers}. {user.mention} - '
                     except:
-                        info += f'{count_buyers}. **{object_sale["discordTag"]}** - {object_sale["Price"]:,}g\n'
+                        info += f'{count_buyers}. **{object_sale["discordTag"]}** - '
+                    isPaid = object_sale["isPaid"]
+                    info += f'{object_sale["Price"]:,}g {"✅ paid" if isPaid else "❌ not paid"} - {object_sale["Booster"]}\n'
 
                     if count_buyers == last_buyer_number:
                         info += "\u200b"

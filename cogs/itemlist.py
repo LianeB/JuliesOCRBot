@@ -979,6 +979,7 @@ class ItemList(commands.Cog, name='Item List'):
 
     @commands.command(aliases=['sp'])
     async def serverprices(self, ctx, *, server):
+        """Lists all items and their prices that were recorded for a server"""
         # Create embed
         embed = discord.Embed(title=server.title(), color=self.client.color)
         embed.set_author(name="Server Prices", icon_url=ctx.guild.icon.url)
