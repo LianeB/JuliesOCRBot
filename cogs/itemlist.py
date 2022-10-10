@@ -977,6 +977,31 @@ class ItemList(commands.Cog, name='Item List'):
         self.reload_averages_medians_dict()
 
 
+    @commands.command(aliases=['sp'])
+    async def serverprices(self, ctx, *, server):
+        # Create embed
+        embed = discord.Embed(title=server.title(), color=self.client.color)
+        embed.set_author(name="Server Prices", icon_url=ctx.guild.icon.url)
+
+        # Get prices
+        document = self.client.BMAH_coll.find_one({"name": "prices"})
+        del document["name"]
+        del document["_id"]
+        outer_desc = ''
+        for category_name, items_obj in document.items():
+            inner_desc = ''
+            for item_name, price_list in items_obj.items():
+                for price_str in price_list:
+                    if server.lower() in self.get_server(price_str).lower():
+                        inner_desc += f"{item_name} - {self.get_price(price_str):,}g\n"
+            if inner_desc:
+                outer_desc += f"**__{category_name}__**\n{inner_desc}\n"
+        embed.description = outer_desc
+        await ctx.send(embed=embed)
+
+
+
+
 
 if inDev:
     with open("./auth.json") as f: authData = json.load(f)
