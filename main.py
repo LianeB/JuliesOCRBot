@@ -15,7 +15,6 @@ if inDev:
     token = authData["Token"]
     cluster = MongoClient(authData["MongoClient"])
     bmah_items_collection = "dev_BMAH_items"
-    print('true')
 
 else:
     token = str(os.environ.get("DISCORD_TOKEN"))
@@ -30,7 +29,6 @@ db = cluster["JulieOCRBot"]
 
 #Set variables accessible in all cogs
 client.BMAH_coll = db[bmah_items_collection] # either BMAH_items or dev_BMAH_items
-print(bmah_items_collection)
 client.error_coll = db["errors"]
 client.color = 0x68bd0e #0x74d40c
 client.prefix = configData["prefix"]

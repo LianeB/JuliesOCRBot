@@ -1003,18 +1003,6 @@ class ItemList(commands.Cog, name='Item List'):
 
 
 
-
-if inDev:
-    with open("./auth.json") as f: authData = json.load(f)
-    cluster = MongoClient(authData["MongoClient"]) # ------------------------------CHANGE HERE
-
-else:
-    cluster = MongoClient(str(os.environ.get("MONGOCLIENT")))
-
-db = cluster["OCRBot"]
-error_coll = db["errors"]
-
-
 def ocr_space_url(url, overlay=False, api_key='7d59c9f1ee88957', language='eng'):
     """ OCR.space API request with remote file.
     :param url: Image url.
@@ -1053,14 +1041,14 @@ def ocr_space_url(url, overlay=False, api_key='7d59c9f1ee88957', language='eng')
         date = datetime.datetime.now(eastern)
         results_dict["datetime"] = date.strftime(fmt)
 
-        error_coll.insert_one(results_dict)
-
         error_msg = ''
         for msg in results_dict["ErrorMessage"]:
            error_msg += msg + "\n"
         return error_msg
     else:
         return result_string
+
+
 
 async def setup(client):
     await client.add_cog(ItemList(client))

@@ -105,7 +105,6 @@ class Boosts(commands.Cog, name='Sales'):
                             for keyword in synonym_list:
                                 if inputted_item.lower() in keyword:
                                     #find offical item name
-                                    print(f"found {inputted_item}")
                                     for official_item_name in fullset_list:
                                         if any(keyword in official_item_name.lower() for keyword in synonym_list):
                                             inputted_items_official_names_list.append(official_item_name)
@@ -277,11 +276,9 @@ class Boosts(commands.Cog, name='Sales'):
         found=False
         for item_full_name, sale_list in document["Sales"].items():
             if item_name.lower() in item_full_name.lower():
-                print("in if #1")
                 idx = 0
                 for sale_object in sale_list:
                     if discordTag.lower() in sale_object["discordTag"].lower():
-                        print("in if #2")
                         self.client.BMAH_coll.update_one({"name": "sales"}, {"$set": {f'Sales.{item_full_name}.{idx}.isPaid': True}}, upsert=True)
                         await ctx.send(f'✅ **{item_full_name}** sale for **{discordTag}** is now paid')
                         found=True
