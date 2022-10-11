@@ -373,7 +373,7 @@ class ItemList(commands.Cog, name='Item List'):
                     if server == "_id" or server == "name":
                         continue
                     for item in item_list:
-                        if item.lower() in item_given.lower():
+                        if item_given.lower() in item.lower():
                             servers += f'\n ‣ {server.capitalize()}'
 
                 if not servers:
@@ -417,7 +417,7 @@ class ItemList(commands.Cog, name='Item List'):
             if category == "_id" or category == "name":
                 continue
             for item in item_list:
-                if item.lower() in item_name.lower():
+                if item_name.lower() in item.lower():
                     self.client.BMAH_coll.update_one({"name": "todays_items"}, {
                         "$inc": {f'{category}.{item}': 1},
                     }, upsert=True)
@@ -446,7 +446,7 @@ class ItemList(commands.Cog, name='Item List'):
             if category == "_id" or category == "name":
                 continue
             for item in item_list:
-                if item.lower() in item_name.lower():
+                if item_name.lower() in item.lower():
                     # remove from the 2 databases
                     self.remove_everywhere(category, item, server)
                     await ctx.send(f'Removed one **{item}** from today\'s list from the server **{server.title()}**')
