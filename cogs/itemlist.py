@@ -5,9 +5,11 @@ import os
 import re
 import time
 import traceback
+import aiocron as aiocron
 import discord
 import typing
 from statistics import mean, median
+import pytz
 from discord.ext import commands
 import requests
 from pymongo import MongoClient
@@ -20,12 +22,19 @@ with open("./config.json") as f: configData = json.load(f)
 inDev = configData["inDev"]
 
 class ItemList(commands.Cog, name='Item List'):
-
     # Description of this cog (cog.__doc__)
     """OCR cog description"""
 
     def __init__(self, client):
         self.client = client
+        eastern = pytz.timezone('America/Toronto')
+        # (*minute, *hour_of_day, *day_of_month, *month, *day_of_week)
+        # example : ('2 4 * * mon,fri')  # 04:02 on every Monday and Friday
+        @aiocron.crontab("30 1 * * *", tz=eastern)
+        @asyncio.coroutine
+        def at_one_thirty():
+            yield from self.auto_wipe()
+
         self.embed_dict = {}
         self.embed_average_dict = {}
         self.embed_median_dict = {}
@@ -62,6 +71,16 @@ class ItemList(commands.Cog, name='Item List'):
             self.embed_dict[f'{category}'] = embed
 
         self.reload_averages_medians_dict()
+
+
+    # Event: Auto-wipe at 1:30 AM
+    @asyncio.coroutine
+    async def auto_wipe(self):
+        channel = await self.client.fetch_channel(825817442558804039) #dev #784660945758584853) # bot-commands channel
+        msg = f'⏰‼ ***It is 1:30AM!*** ‼⏰'
+        await channel.send(msg)
+        await self.wipe_func(channel)
+
 
 
     def reload_averages_medians_dict(self):
@@ -389,6 +408,10 @@ class ItemList(commands.Cog, name='Item List'):
     @commands.command()
     async def wipe(self, ctx):
         """Wipes today's list of items from the database"""
+        await self.wipe_func(ctx.channel)
+
+
+    async def wipe_func(self, channel):
         document = self.client.BMAH_coll.find_one({"name": "todays_items"})
         document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
 
@@ -405,7 +428,7 @@ class ItemList(commands.Cog, name='Item List'):
         # empty last save variable
         self.last_save = {}
 
-        await ctx.send("The bot's current list of items has been successfully wiped.")
+        await channel.send("The bot's current list of items has been successfully wiped.")
 
 
     @commands.command()
