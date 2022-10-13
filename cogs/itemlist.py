@@ -76,7 +76,7 @@ class ItemList(commands.Cog, name='Item List'):
     # Event: Auto-wipe at 1:30 AM
     @asyncio.coroutine
     async def auto_wipe(self):
-        channel = await self.client.fetch_channel(825817442558804039) #dev #784660945758584853) # bot-commands channel
+        channel = await self.client.fetch_channel(784660945758584853) # bot-commands channel
         msg = f'⏰‼ ***It is 1:30AM!*** ‼⏰'
         await channel.send(msg)
         await self.wipe_func(channel)
