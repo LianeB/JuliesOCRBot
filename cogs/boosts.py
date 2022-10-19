@@ -287,7 +287,7 @@ class Boosts(commands.Cog, name='Sales'):
         if not found:
             await ctx.send(f'❌ **{item_name.title()}** sale for **{discordTag}** was not found. Make sure there are no spelling mistakes. You may see all current sales with `;boosts`')
 
-    @commands.command(aliases=["lb", "buyerslist", "listbuyers"])
+    @commands.command(aliases=["lb", "buyerslist", "listbuyers", "buyers", "orders"])
     async def boosts(self, ctx, by="by", categorize_by="item", player=None):
         """Lists the active boosts. Can list by item or by player (default is by item). Type literally `;boosts by player` or `;boosts by item`"""
 

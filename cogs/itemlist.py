@@ -659,9 +659,14 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command(aliases=['enterprice', 'ep'])
-    async def enterprices(self, ctx, *, inputted_server):
+    async def enterprices(self, ctx, *, inputted_server=None):
         """Enter the prices for the items of a server in today's list"""
         document = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+
+        # verify inputted_server argument is present
+        if inputted_server is None:
+            await ctx.send(f"You forgot to add the server name!")
+            return
 
         # verify server is in today's list
         isPresent = False
@@ -695,7 +700,10 @@ class ItemList(commands.Cog, name='Item List'):
                     if inputted_price.lower() == 'cancel':
                         await ctx.send("Cancelled the entry.")
                         return
-                    if inputted_price.lower() == 'skip':
+                    elif inputted_price.lower() == 'skip':
+                        break
+                    elif (inputted_price.lower() == 'miss') or (inputted_price.lower() == 'missed'):
+                        price_list[item] = 0 # Put 0 to indicate that item is missed (should be deleted without entering the price)
                         break
                     # convert K to 1000 or M to 1,000,000
                     translated_price = utils.translate_price(inputted_price)
@@ -723,16 +731,20 @@ class ItemList(commands.Cog, name='Item List'):
                     if _item.lower() in item.lower():
                         category = _category
                         shouldBreak = True
-                        item_category_dict[item] = category
+                        if price > 0 : item_category_dict[item] = category
                         break
                 if shouldBreak : break
-            # add to price db
-            self.client.BMAH_coll.update_one({"name": "prices"}, {"$push": {f'{category}.{item}': f'{price}-{inputted_server.title()}'}})
+            if price > 0:
+                # add to price db
+                self.client.BMAH_coll.update_one({"name": "prices"}, {"$push": {f'{category}.{item}': f'{price}-{inputted_server.title()}'}})
             # remove from "todays_items" and "todays_items_servers"
             self.remove_everywhere(category, item, inputted_server.lower())
 
         # save item_list in a self.variable list to keep in memory last changes done. (Overwrite last one)
         self.last_price_entry_items = item_category_dict
+
+        # Remove missed items (where price = 0) to avoid it showing in confirmation message
+        price_list = {key: val for key, val in price_list.items() if val != 0}
 
         # Confirmation message
         lst = ''
@@ -840,8 +852,14 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command(aliases=['prices', 'p'])
-    async def price(self, ctx, *, item_name):
+    async def price(self, ctx, *, item_name=None):
         """Shows all the past prices an item had, as well as its average and median"""
+
+        # verify item_name is present
+        if item_name is None:
+            await ctx.send("You forgot to add the item name!")
+            return
+
         try:
             # verify item exists
             document = self.client.BMAH_coll.find_one({"name": "prices"})
@@ -1000,7 +1018,7 @@ class ItemList(commands.Cog, name='Item List'):
         self.reload_averages_medians_dict()
 
 
-    @commands.command(aliases=['sp'])
+    @commands.command(aliases=['sp', 'realmprices'])
     async def serverprices(self, ctx, *, server):
         """Lists all items and their prices that were recorded for a server"""
         # Create embed
