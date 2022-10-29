@@ -187,7 +187,15 @@ class ItemList(commands.Cog, name='Item List'):
                             (item == "Clutch of Ji-Kun" and "clutchof" in result.lower()) or \
                             (item == "Reins of the Green Proto-Drake" and "reinsofthegreen" in result.lower()) or \
                             (item == "Deathcharger's Reins" and "deathchargerisreins" in result.lower()) or \
-                            (item == "Reins of the Jade Primordial Direhorn" and "reinsoftheladeprimordialdirehorn" in result.lower()) :
+                            (item == "Reins of the Jade Primordial Direhorn" and "reinsoftheladeprimordialdirehorn" in result.lower()) or \
+                            (item == "X-51 Nether-Rocket X-TREME" and "x-51" in result.lower()) or \
+                            (item == "Reins of the Drake of the North Wind" and "northwind" in result.lower()) or \
+                            (item == "Reins of the Blazing Drake" and "reinsoftheblazing" in result.lower()) or \
+                            (item == "Illusion: Winter's Grasp" and "winterisgrasp" in result.lower()) or \
+                            (item == "Shackled Ur'zul" and "shackledurizul" in result.lower()) or \
+                            (item == "Ashes of Al'ar" and "ashesofaliar" in result.lower()) or \
+                            (item == "Kor'kron Juggernaut" and "korikronjuggernaut" in result.lower()) or \
+                            (item == "Experiment 12-B" and "experiment12" in result.lower()) :
                             # item_split = item.lower().split()
                     # if all(x in result.lower() for x in item_split):
                     # ---> Code for if all the words in item name are present in result
