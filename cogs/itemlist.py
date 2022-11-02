@@ -384,15 +384,23 @@ class ItemList(commands.Cog, name='Item List'):
                 if len(ordered_dict) == 0:
                     embed.add_field(name="No items scanned", value="\u200b", inline=True)
 
-                for server, item_dict in ordered_dict.items():
-                    items = ''
-                    last_item = list(item_dict)[-1]
-                    for item, amount in item_dict.items():
-                        items += f'{item} {"("+ str(amount) +")" if amount > 1 else ""}\n'
-                        if item == last_item:
-                            items += "\u200b"
-                    embed.add_field(name=server.title(), value=items, inline=True)
-                await ctx.send(embed=embed)
+                async def add_fields(embed, dict):
+                    for server, item_dict in dict.items():
+                        items = ''
+                        last_item = list(item_dict)[-1]
+                        for item, amount in item_dict.items():
+                            items += f'{item} {"("+ str(amount) +")" if amount > 1 else ""}\n'
+                            if item == last_item:
+                                items += "\u200b"
+                        embed.add_field(name=server.title(), value=items, inline=True)
+                    await ctx.send(embed=embed)
+
+                if len(ordered_dict) > 25:
+                    await add_fields(embed, dict(list(ordered_dict.items())[:25]))
+                    await add_fields(discord.Embed(color=self.client.color), dict(list(ordered_dict.items())[25:]))
+                else:
+                    await add_fields(embed, ordered_dict)
+
 
             else:
                 servers = f''
