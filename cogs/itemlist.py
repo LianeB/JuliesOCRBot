@@ -235,6 +235,13 @@ class ItemList(commands.Cog, name='Item List'):
             await ctx.send(f'There was an unexpected error. Error log for Dev: ```{traceback.format_exc()}```')
 
 
+    @commands.command(aliases=['listservers'])
+    async def serverlist(self, ctx):
+        """Shows the list of today's items with the server associated"""
+        document = self.client.BMAH_coll.find_one({"name": "todays_items"})
+        serverDocument = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+        await self.list_fct(ctx.guild, ctx.channel, calledWithWithout=False, document=document, client=self.client, withServers=True, serverDocument=serverDocument)
+
 
     @commands.command(aliases=['items'])
     async def list(self, ctx, without=None):
@@ -250,7 +257,8 @@ class ItemList(commands.Cog, name='Item List'):
         except:
             await ctx.send(f'There was an error. Error log for Dev: ```{traceback.format_exc()}```')
 
-    async def list_fct(self, guild, channel, calledWithWithout, document, client):
+
+    async def list_fct(self, guild, channel, calledWithWithout, document, client, withServers=False, serverDocument=None):
         def date_suffix(myDate):
             date_suffix = ["th", "st", "nd", "rd"]
 
@@ -272,6 +280,12 @@ class ItemList(commands.Cog, name='Item List'):
                 await channel.send(embed=embed)
                 return
 
+            # if ;serverlist, fix serverDocument
+            if withServers:
+                del serverDocument["name"]
+                del serverDocument["_id"]
+
+            # Create embed
             now = datetime.datetime.now().strftime('%A, %B %d')
             date_suffix = date_suffix(int(datetime.datetime.now().strftime('%d')))
             embed = discord.Embed(description=f"The BMAH item list for **{now}{date_suffix}** is the following:", color=client.color) #title=f'{emoji} BMAH item list - {now}{date_suffix}')
@@ -305,12 +319,19 @@ class ItemList(commands.Cog, name='Item List'):
                 embed.add_field(name="\u200b", value="\u200b")
                 embed.add_field(name="\u200b", value="\u200b")
 
-
+            # Create T3 (Armor) fields
             for category, item_dict in ordered_dict.items():
                 items = ''
                 last_item = list(item_dict)[-1]
                 for item, amount in item_dict.items():
-                    items += f'{item} {"("+ str(amount) +")" if amount > 1 else ""}\n'
+                    # if ;listservers
+                    if withServers:
+                        for server, item_list in serverDocument.items():
+                            for item_fromServerDoc in item_list:
+                                if item.lower() in item_fromServerDoc.lower():
+                                    items += f'{item} ─ {server.capitalize()}\n'
+                    else:
+                        items += f'{item} {"("+ str(amount) +")" if amount > 1 else ""}\n'
                     if item == last_item:
                         items += "\u200b"
                 category_name = emoji_dict[f'{category}'] + " " + category
@@ -332,7 +353,14 @@ class ItemList(commands.Cog, name='Item List'):
                 for category, item_dict in dict_a_part.items():
                     items = ''
                     for item, amount in item_dict.items():
-                        items += f'{item} {"("+ str(amount) +")" if amount > 1 else ""}\n'
+                        # if ;listservers
+                        if withServers:
+                            for server, item_list in serverDocument.items():
+                                for item_fromServerDoc in item_list:
+                                    if item.lower() in item_fromServerDoc.lower():
+                                        items += f'{item} ─ {server.capitalize()}\n'
+                        else:
+                            items += f'{item} {"(" + str(amount) + ")" if amount > 1 else ""}\n'
                     category_name = emoji_dict[f'{category}'] + " " + category
                     embed.add_field(name=category_name, value=items, inline=True)
 
