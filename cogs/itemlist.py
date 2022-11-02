@@ -329,7 +329,7 @@ class ItemList(commands.Cog, name='Item List'):
                         for server, item_list in serverDocument.items():
                             for item_fromServerDoc in item_list:
                                 if item.lower() in item_fromServerDoc.lower():
-                                    items += f'{item} ─ {server.capitalize()}\n'
+                                    items += f'🡢 {item} __*({server.capitalize()})*__\n'
                     else:
                         items += f'{item} {"("+ str(amount) +")" if amount > 1 else ""}\n'
                     if item == last_item:
@@ -358,7 +358,7 @@ class ItemList(commands.Cog, name='Item List'):
                             for server, item_list in serverDocument.items():
                                 for item_fromServerDoc in item_list:
                                     if item.lower() in item_fromServerDoc.lower():
-                                        items += f'{item} ─ {server.capitalize()}\n'
+                                        items += f'🡢 {item} __*({server.capitalize()})*__\n'
                         else:
                             items += f'{item} {"(" + str(amount) + ")" if amount > 1 else ""}\n'
                     category_name = emoji_dict[f'{category}'] + " " + category
