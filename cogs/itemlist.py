@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import io
 import json
 import os
 import re
@@ -948,10 +949,10 @@ class ItemList(commands.Cog, name='Item List'):
 
             # Set graph image
             if price_list:
-                self.generate_graph(self.get_price(price_list))
-                image = discord.File('./images/graph.png', filename='graph.png')
+                file = self.generate_graph(self.get_price(price_list))
+                #image = discord.File('./images/graph.png', filename='graph.png')
                 embed.set_image(url=f'attachment://graph.png')
-                await ctx.send(file=image, embed=embed)
+                await ctx.send(file=file, embed=embed)
             else:
                 await ctx.send(embed=embed)
 
@@ -1154,8 +1155,15 @@ class ItemList(commands.Cog, name='Item List'):
         plt.legend(loc="lower right", ncol=2, bbox_to_anchor=(0, 1.02, 1, 0.2), frameon=False)
 
         # Save figure
-        plt.savefig('./images/graph.png', transparent=True, bbox_inches='tight', pad_inches=None)
+        arr = io.BytesIO()
+        plt.savefig(arr, transparent=True, bbox_inches='tight', pad_inches=None)
         plt.close(fig)
+
+        # Create discord File
+        arr.seek(0)
+        file = discord.File(arr, filename='graph.png')
+
+        return file
 
 
 
