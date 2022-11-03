@@ -8,6 +8,7 @@ import traceback
 import aiocron as aiocron
 import discord
 import typing
+import matplotlib.pyplot as plt
 from statistics import mean, median
 import pytz
 from discord.ext import commands
@@ -709,7 +710,8 @@ class ItemList(commands.Cog, name='Item List'):
 
         # verify inputted_server argument is present
         if inputted_server is None:
-            await ctx.send(f"You forgot to add the server name!")
+            fuckyou_emoji = self.client.get_emoji(1037808564187713646)
+            await ctx.send(f"You forgot to add the server name you fucking retard {fuckyou_emoji}")
             return
 
         # verify server is in today's list
@@ -901,7 +903,8 @@ class ItemList(commands.Cog, name='Item List'):
 
         # verify item_name is present
         if item_name is None:
-            await ctx.send("You forgot to add the item name!")
+            fuckyou_emoji = self.client.get_emoji(1037808564187713646)
+            await ctx.send(f"You forgot to add the item name you fucking retard {fuckyou_emoji}")
             return
 
         try:
@@ -937,11 +940,21 @@ class ItemList(commands.Cog, name='Item List'):
                        f"{prices_servers_str}" \
                        f"\nAverage : **{int(mean(self.get_price(price_list))):,}g**" \
                        f"\nMedian : **{int(median(self.get_price(price_list))):,}g**"
+
             else:
                 desc = f"The past prices for **{formatted_item}** are the following:\n\n" \
                        f"No data"
             embed.description = desc
-            await ctx.send(embed=embed)
+
+            # Set graph image
+            if price_list:
+                self.generate_graph(self.get_price(price_list))
+                image = discord.File('./images/graph.png', filename='graph.png')
+                embed.set_image(url=f'attachment://graph.png')
+                await ctx.send(file=image, embed=embed)
+            else:
+                await ctx.send(embed=embed)
+
         except:
             await ctx.send(f'There was an unexpected error. Error log for Dev: ```{traceback.format_exc()}```')
 
@@ -1085,6 +1098,64 @@ class ItemList(commands.Cog, name='Item List'):
         embed.description = outer_desc
         await ctx.send(embed=embed)
 
+
+    def generate_graph(self, data):
+        """Generates a matplotlib plot to visualize price repartition"""
+
+        # Code inspired in part by https://github.com/ChattyRS/RuneClock/blob/master/cogs/runescape.py
+        # (function _07price)
+
+        plt.style.use('dark_background')
+
+        # Size/ratio of plot
+        fig, ax = plt.subplots(figsize=(7, 1), dpi=500)
+
+        # Remove all surrounding lines from the graph
+        plt.yticks([]) # Removes y ticks and labels
+        #ax.xaxis.grid(color="#17191a", linewidth=0.4) # creates vertical grid lines
+        #ax.tick_params(bottom=False) # removes bottom ticks
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+
+        # Draw horizontal line
+        plt.axhline(y=1, color='#4d5657', zorder=0, linewidth=0.4)  # [y, xmin, xmax]
+
+        # Set limits
+        plt.xlim(min(data)-1000, max(data)+1000)
+        plt.ylim(0.5, 1.5)
+
+        # func to convert num to k --> 12000 = 12k
+        def human_format(num):
+            num = float('{:.3g}'.format(num))
+            magnitude = 0
+            while abs(num) >= 1000:
+                magnitude += 1
+                num /= 1000.0
+            return '{}{}'.format('{:f}'.format(num).rstrip('0').rstrip('.'), ['', 'K', 'M', 'B', 'T'][magnitude])
+
+        # Convert values over 1000 with k's (x axis)
+        locs, _ = plt.xticks()
+        xlabels = []
+        for l in locs:
+            xlabels.append(human_format(l))
+        plt.xticks(locs, xlabels)
+
+        # Create plot
+        #plt.eventplot(a, orientation='horizontal', colors='#47a0ff', linelengths=0.15)
+        plt.scatter(x=data, y=[1 for x in range(len(data))])
+
+        # Average and Median lines
+        plt.axvline(x=mean(data), color='red', linestyle='--', linewidth=2, label='Avg', zorder=99)
+        plt.axvline(x=median(data), color='blue', linestyle='--', linewidth=2, label='Median')
+
+        # Show legend
+        plt.legend(loc="lower right", ncol=2, bbox_to_anchor=(0, 1.02, 1, 0.2), frameon=False)
+
+        # Save figure
+        plt.savefig('./images/graph.png', transparent=True, bbox_inches='tight', pad_inches=None)
+        plt.close(fig)
 
 
 
