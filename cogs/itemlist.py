@@ -6,6 +6,9 @@ import os
 import re
 import time
 import traceback
+from collections import OrderedDict
+from operator import getitem
+
 import aiocron as aiocron
 import discord
 import typing
@@ -1097,6 +1100,120 @@ class ItemList(commands.Cog, name='Item List'):
             if inner_desc:
                 outer_desc += f"**__{category_name}__**\n{inner_desc}\n"
         embed.description = outer_desc
+        await ctx.send(embed=embed)
+
+
+    @commands.command(aliases=['rankings', 'ranks', 'rank','ranking', 'serverranks', 'serverranking'])
+    async def serverrankings(self, ctx, category=None):
+        """See which servers hold the best prices"""
+        document = self.client.BMAH_coll.find_one({"name": "prices"})
+        del document["name"]
+        del document["_id"]
+
+        # Filter wanted categories
+        if category:
+            if category.lower() in "mount":
+                categories = ["mounts"]
+            elif category.lower() in "t3":
+                categories = ["mage", "priest", "hunter", "warlock", "shaman", "warrior", "rogue", "druid", "paladin"]
+            elif category.lower() in "cloth":
+                categories = ["priest", "warlock", "mage"]
+            elif category.lower() in "mail":
+                categories = ["hunter", "shaman"]
+            elif category.lower() in "plate":
+                categories = ["warrior", "paladin"]
+            elif category.lower() in "leather":
+                categories = ["druid", "rogue"]
+            else:
+                categories = [category.lower()]
+
+            document = {k: v for k, v in document.items() if k.lower() in categories}
+            print(document)
+
+        if not document:
+            await ctx.send(f'**{category.capitalize()}** is an invalid category. See categories with `;db`.')
+            return
+
+        # Create dict with all median prices -- {Mage : {Frostfire Circlet: 12555, Frostfire Shoulderpads: 17800, ...}, ...}
+        median_prices = {}
+        for category_name, items_obj in document.items():
+            median_prices[category_name] = {}
+            for item_name, price_list in items_obj.items():
+                if price_list:
+                    median_prices[category_name][item_name] = int(median(self.get_price(price_list)))
+
+
+        # Create dict of ratios (wether items are over or under median price)
+        ratios = {} # Format : {Misha: {over: 6, under: 11}, Ysera: {over: 21, under: 13}, ...}
+        for category_name, items_obj in document.items():
+            for item_name, price_list in items_obj.items():
+                print(item_name)
+                for price_str in price_list:
+                    price = self.get_price(price_str)
+                    server = self.get_server(price_str)
+                    if server not in ratios.keys():
+                        ratios[server] = {"over": 0, "under": 0}
+                    if price > median_prices[category_name][item_name]:
+                        ratios[server]["over"] += 1
+                    else:
+                        ratios[server]["under"] += 1
+
+
+        # Transform quantity into perc
+        ratios_perc = {} # Format : {Misha: {over:35.3, under: 64.7, Total items: 17}, Ysera: {over: 61.8, under: 38.2, Total items: 34}, ...}
+        for server, ratio_obj in ratios.items():
+            total = ratio_obj["over"] + ratio_obj["under"]
+            ratio_over = round(ratio_obj["over"] / total * 100, 1)
+            ratio_under = round(ratio_obj["under"] / total * 100, 1)
+            ratios_perc[server] = {"over": ratio_over, "under": ratio_under, "total items": total}
+
+
+        # Order by "Over" ascending (or "Under" descending)
+        results_dict = dict(OrderedDict(sorted(ratios_perc.items(), key=lambda x: getitem(x[1], 'over'))))
+
+
+        # Create embed
+        # 🟢 = Under Median
+        # 🔴 = Over Median
+        # 1. Misha - 🟢 64.7%, 🔴 35.3% *(based off **17** records)*
+        # 2. Ysera - 🟢 38.2%, 🔴 61.8% *(based off **34** records)*
+
+        embed = discord.Embed(color=self.client.color)
+        embed.set_author(name="Server Rankings", icon_url=ctx.guild.icon.url)
+        if category is None:
+            desc = f'*NOTE: The following results take into account **ALL** prices recorded in the database*\n\n'
+        else:
+            desc = f'*NOTE: The following results only take into account only the prices from the **{", ".join(median_prices.keys())}** {"category" if len(median_prices.keys()) == 1 else "categories"}*\n\n'
+
+        desc += "🟢 = Under Median\n🔴 = Over Median\n\u200b\n"
+
+        count = 1
+        txt_field1 = ''
+        txt_field2 = ''
+        txt_field3 = ''
+        txt_field4 = ''
+        txt_field5 = ''
+        txt_field6 = ''
+        for server, ratio_obj in results_dict.items():
+            if count <= 20:
+                txt_field1 += f'**{count}.** {server}\n'
+                txt_field2 += f'🟢 {ratio_obj["under"]}%\n'
+                txt_field3 += f'🔴 {ratio_obj["over"]}% \u200b *(based off **{ratio_obj["total items"]}** records)*\n'
+            else:
+                txt_field4 += f'**{count}.** {server}\n'
+                txt_field5 += f'🟢 {ratio_obj["under"]}%\n'
+                txt_field6 += f'🔴 {ratio_obj["over"]}% \u200b *(based off **{ratio_obj["total items"]}** records)*\n'
+
+            count += 1
+        embed.add_field(name="Realm", value=txt_field1)
+        embed.add_field(name="Under", value=txt_field2)
+        embed.add_field(name="Over", value=txt_field3)
+        if count > 20:
+            embed.add_field(name="\u200b", value=txt_field4)
+            embed.add_field(name="\u200b", value=txt_field5)
+            embed.add_field(name="\u200b", value=txt_field6)
+
+        embed.description = desc
         await ctx.send(embed=embed)
 
 
