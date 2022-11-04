@@ -1188,6 +1188,7 @@ class ItemList(commands.Cog, name='Item List'):
         desc += "🟢 = Under Median\n🔴 = Over Median\n\u200b\n"
 
         count = 1
+        limit = 10 if (category is None or category.lower() in "mounts") else 3
         txt_field1 = ''
         txt_field2 = ''
         txt_field3 = ''
@@ -1195,7 +1196,7 @@ class ItemList(commands.Cog, name='Item List'):
         txt_field5 = ''
         txt_field6 = ''
         for server, ratio_obj in results_dict.items():
-            if ratio_obj["total items"] >= 10:
+            if ratio_obj["total items"] >= limit:
                 if count <= 20:
                     txt_field1 += f'**{count}.** {server}\n'
                     txt_field2 += f'🟢 {ratio_obj["under"]}%\n'
@@ -1206,6 +1207,11 @@ class ItemList(commands.Cog, name='Item List'):
                     txt_field6 += f'🔴 {ratio_obj["over"]}% \u200b *(based off **{ratio_obj["total items"]}** records)*\n'
 
                 count += 1
+
+        if count == 1:
+            await ctx.send(f'There are no realms in the {category.capitalize()} category that has more than {limit} records')
+            return
+
         embed.add_field(name="Realm", value=txt_field1)
         embed.add_field(name="Under", value=txt_field2)
         embed.add_field(name="Over", value=txt_field3)
