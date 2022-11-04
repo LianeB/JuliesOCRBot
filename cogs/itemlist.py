@@ -1181,7 +1181,7 @@ class ItemList(commands.Cog, name='Item List'):
         if category is None:
             desc = f'*NOTE: The following results take into account **ALL** prices recorded in the database*\n\n'
         else:
-            desc = f'*NOTE: The following results only take into account only the prices from the **{", ".join(median_prices.keys())}** {"category" if len(median_prices.keys()) == 1 else "categories"}*\n\n'
+            desc = f'*NOTE: The following results only take into account the prices from the **{", ".join(median_prices.keys())}** {"category" if len(median_prices.keys()) == 1 else "categories"}*\n\n'
 
         desc += "🟢 = Under Median\n🔴 = Over Median\n\u200b\n"
 
