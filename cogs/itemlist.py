@@ -1128,7 +1128,6 @@ class ItemList(commands.Cog, name='Item List'):
                 categories = [category.lower()]
 
             document = {k: v for k, v in document.items() if k.lower() in categories}
-            print(document)
 
         if not document:
             await ctx.send(f'**{category.capitalize()}** is an invalid category. See categories with `;db`.')
@@ -1147,7 +1146,6 @@ class ItemList(commands.Cog, name='Item List'):
         ratios = {} # Format : {Misha: {over: 6, under: 11}, Ysera: {over: 21, under: 13}, ...}
         for category_name, items_obj in document.items():
             for item_name, price_list in items_obj.items():
-                print(item_name)
                 for price_str in price_list:
                     price = self.get_price(price_str)
                     server = self.get_server(price_str)
