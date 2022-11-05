@@ -428,9 +428,9 @@ class ItemList(commands.Cog, name='Item List'):
                         embed.add_field(name=server.title(), value=items, inline=True)
                     await ctx.send(embed=embed)
 
-                if len(ordered_dict) > 25:
-                    await add_fields(embed, dict(list(ordered_dict.items())[:25]))
-                    await add_fields(discord.Embed(color=self.client.color), dict(list(ordered_dict.items())[25:]))
+                if len(ordered_dict) > 24:
+                    await add_fields(embed, dict(list(ordered_dict.items())[:24]))
+                    await add_fields(discord.Embed(color=self.client.color), dict(list(ordered_dict.items())[24:]))
                 else:
                     await add_fields(embed, ordered_dict)
 
@@ -1129,9 +1129,9 @@ class ItemList(commands.Cog, name='Item List'):
 
             document = {k: v for k, v in document.items() if k.lower() in categories}
 
-        if not document:
-            await ctx.send(f'**{category.capitalize()}** is an invalid category. See categories with `;db`.')
-            return
+            if not document:
+                await ctx.send(f'**{category.capitalize()}** is an invalid category. See categories with `;db`.')
+                return
 
         # Create dict with all median prices -- {Mage : {Frostfire Circlet: 12555, Frostfire Shoulderpads: 17800, ...}, ...}
         median_prices = {}
@@ -1205,6 +1205,7 @@ class ItemList(commands.Cog, name='Item List'):
                     txt_field6 += f'🔴 {ratio_obj["over"]}% \u200b *(based off **{ratio_obj["total items"]}** records)*\n'
 
                 count += 1
+
 
         if count == 1:
             await ctx.send(f'There are no realms in the {category.capitalize()} category that has more than {limit} records')
