@@ -24,7 +24,7 @@ class TrendsCog(commands.Cog, name='Trends Cog'):
 
 
     @commands.command(aliases=['trend'])
-    async def trends(self, ctx, server):
+    async def trends(self, ctx, *, server):
         """Test plotting of trends"""
 
         document = self.client.BMAH_coll.find_one({"name": "prices"})
