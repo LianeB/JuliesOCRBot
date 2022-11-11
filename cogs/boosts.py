@@ -4,7 +4,7 @@ import traceback
 import discord
 from discord.ext import commands
 import json
-from views import paginatorView
+from views import paginatorView, completionView
 from cogs import utils
 import math
 
@@ -154,11 +154,11 @@ class Boosts(commands.Cog, name='Sales'):
 
         await self.remove_active_boost(ctx, buyer, item_identifier, "removed")
 
-
+    '''
     @commands.command(aliases=['done'])
     async def complete(self, ctx, buyer, *, item_identifier):
         """Completes a boost. (removes the sale from the list)"""
-        '''buyer is either User object or discord Tag string'''
+        # buyer is either User object or discord Tag string
 
         #convert buyer to discord Tag if user object
         try:
@@ -173,11 +173,34 @@ class Boosts(commands.Cog, name='Sales'):
         # if item_identifier is the item name
         else:
             item_names = await self.remove_active_boost(ctx, buyer, item_identifier, "completed")
+    '''
+
+    @commands.command(aliases=['comp'])
+    async def complete(self, ctx):
+        document = self.client.BMAH_coll.find_one({"name": "sales"})
+
+        count_items = 0
+        select_options = []
+        selects = []
+        page = 1
+        for item_name, sales_list in document["Sales"].items():
+            for object_sale in sales_list:
+                select_options.append(discord.SelectOption(label=item_name, description=object_sale["discordTag"], value=f'{item_name}|{object_sale["discordTag"]}'))
+            count_items += 1
+
+            if count_items % 8 == 0:
+                selects.append(completionView.itemSelect(select_options, f'Page {page}'))
+                select_options = []
+                page += 1
+            elif count_items >= len(document["Sales"].keys()):
+                selects.append(completionView.itemSelect(select_options, f'Page {page}'))
+
+        view = completionView.completionView(ctx, self.client, selects)
+        view.message = await ctx.send("Select the items to complete", view=view)
 
 
 
-
-    async def remove_active_boost(self, ctx, buyer, item_identifier, removed_or_completed):
+    async def remove_active_boost(self, ctx, buyer, item_identifier, removed_or_completed, withButton=False):
         """Removes specified item (or index) from active boosts"""
 
         """
@@ -253,11 +276,12 @@ class Boosts(commands.Cog, name='Sales'):
                 if len(document["Sales"][correct_item_name]) == 0:
                     self.client.BMAH_coll.update_one({"name": "sales"}, {'$unset': {f'Sales.{correct_item_name}':1}})
 
-        if isinstance(item_identifier, list):
-            await ctx.send(f'✅ Boost(s) **{", ".join(name for name in correct_item_names)}** for buyer **{buyer}** have been successfully {removed_or_completed}')
-        else:
-            await ctx.send(f'✅ Boost **{item_identifier}** for buyer **{buyer}** has been successfully {removed_or_completed}')
-        return correct_item_names
+        if not withButton:
+            if isinstance(item_identifier, list):
+                await ctx.send(f'✅ Boost(s) **{", ".join(name for name in correct_item_names)}** for buyer **{buyer}** have been successfully {removed_or_completed}')
+            else:
+                await ctx.send(f'✅ Boost **{item_identifier}** for buyer **{buyer}** has been successfully {removed_or_completed}')
+            return correct_item_names
 
 
     @commands.command()
@@ -286,6 +310,7 @@ class Boosts(commands.Cog, name='Sales'):
                     idx += 1
         if not found:
             await ctx.send(f'❌ **{item_name.title()}** sale for **{discordTag}** was not found. Make sure there are no spelling mistakes. You may see all current sales with `;boosts`')
+
 
     @commands.command(aliases=["lb", "buyerslist", "listbuyers", "buyers", "orders"])
     async def boosts(self, ctx, by="by", categorize_by="item", player=None):

@@ -240,7 +240,7 @@ class ItemList(commands.Cog, name='Item List'):
             await ctx.send(f'There was an unexpected error. Error log for Dev: ```{traceback.format_exc()}```')
 
 
-    @commands.command(aliases=['listservers', 'serverlisting', 'serverlistings', 'serverlists'])
+    @commands.command(aliases=['listservers', 'serverlisting', 'serverlistings', 'serverlists', 'serverrealms'])
     async def serverlist(self, ctx):
         """Shows the list of today's items with the server associated"""
         document = self.client.BMAH_coll.find_one({"name": "todays_items"})
