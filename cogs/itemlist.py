@@ -248,7 +248,7 @@ class ItemList(commands.Cog, name='Item List'):
         """Shows the list of today's items with the server associated"""
         document = self.client.BMAH_coll.find_one({"name": "todays_items"})
         serverDocument = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
-        await self.serverlist_fct(ctx.guild, ctx.channel, calledWithWithout=False, document=document, client=self.client, withServers=True, serverDocument=serverDocument)
+        await self.list_fct(ctx.guild, ctx.channel, calledWithWithout=False, document=document, client=self.client, withServers=True, serverDocument=serverDocument)
 
 
     @commands.command(aliases=['items'])
@@ -386,114 +386,6 @@ class ItemList(commands.Cog, name='Item List'):
         except:
             await channel.send(f'There was an error. Error log for Dev: ```{traceback.format_exc()}```')
 
-
-
-    async def serverlist_fct(self, guild, channel, calledWithWithout, document, client, withServers=False, serverDocument=None):
-
-        try:
-            # document = self.client.BMAH_coll.find_one({"name": "todays_items"})
-            emoji_dict = client.BMAH_coll.find_one({"name": "emojis"})
-
-            # check if there are items in today's items
-            if not calledWithWithout and len(document.keys()) == 3:
-                embed = discord.Embed(description="There are no items in today's list", color=client.color)
-                embed.set_author(name="Today's BMAH item list", icon_url=guild.icon.url)
-                embed.timestamp = datetime.datetime.utcnow()
-                await channel.send(embed=embed)
-                return
-
-            # if ;serverlist, fix serverDocument
-            if withServers:
-                del serverDocument["name"]
-                del serverDocument["_id"]
-
-            # Create embed
-            embed = discord.Embed(description=f"Today\'s items are on these servers:\n\u200b",
-                                  color=client.color)
-            embed.set_author(name=f'Today\'s Server List', icon_url=guild.icon.url)
-
-
-            # get dict items
-            item_list = [*document]  # list of dict keys
-            unwanted = {'Pets', 'Mounts', 'Misc', '_id', 'name', 'Toys'}
-            item_list_sorted = sorted([item for item in item_list if item not in unwanted])
-            wanted = {"Misc", "Pets", "Mounts", "Toys"}
-            liste_a_part = [item for item in item_list if item in wanted]
-
-            # order dict
-            ordered_dict = {}
-            for item_name in item_list_sorted:
-                ordered_dict[f'{item_name}'] = document[f'{item_name}']
-
-            # dict a part
-            dict_a_part = {}
-            for item_name in liste_a_part:
-                dict_a_part[f'{item_name}'] = document[f'{item_name}']
-
-
-
-            # Create T3 (Armor) fields
-            fields = 0
-            for category, item_dict in ordered_dict.items():
-                item_names = ''
-                server_names = ''
-                last_item = list(item_dict)[-1]
-                for item, amount in item_dict.items():
-                    # for ;listservers
-                    for server, item_list in serverDocument.items():
-                        for item_fromServerDoc in item_list:
-                            if item.lower() in item_fromServerDoc.lower():
-                                item_names += f'{item}\n'
-                                server_names += f'{server.title()}\n'
-
-                    if item == last_item:
-                        item_names += "\u200b"
-                category_name = emoji_dict[f'{category}'] + " " + category
-                if (fields + 3) >= 25:
-                    await channel.send(embed=embed)
-                    embed = discord.Embed(description="\u200b", color=client.color)
-                    fields = 0
-                embed.add_field(name=category_name, value=item_names, inline=True)
-                embed.add_field(name="Realm", value=server_names, inline=True)
-                embed.add_field(name="\u200b", value="\u200b", inline=True)
-                fields += 3
-
-
-
-
-            # Add Misc, Pets, Mounts
-            if len(dict_a_part) == 0:
-                embed.add_field(name="No Pets, Mounts or Misc items", value="\u200b", inline=True)
-            else:
-                for category, item_dict in dict_a_part.items():
-                    item_names = ''
-                    server_names = ''
-                    last_item = list(item_dict)[-1]
-                    for item, amount in item_dict.items():
-                        # for ;listservers
-                        for server, item_list in serverDocument.items():
-                            for item_fromServerDoc in item_list:
-                                if item.lower() in item_fromServerDoc.lower():
-                                    item_names += f'{item}\n'
-                                    server_names += f'{server.title()}\n'
-
-                        if item == last_item:
-                            item_names += "\u200b"
-                    category_name = emoji_dict[f'{category}'] + " " + category
-                    if (fields + 3) >= 24:
-                        await channel.send(embed=embed)
-                        embed = discord.Embed(description="\u200b", color=client.color)
-                        fields = 0
-                    embed.add_field(name=category_name, value=item_names, inline=True)
-                    embed.add_field(name="Realm", value=server_names, inline=True)
-                    embed.add_field(name="\u200b", value="\u200b", inline=True)
-                    fields += 3
-
-            # if 24 pile, has already sent the embed in previous code
-            if fields < 24:
-                await channel.send(embed=embed)
-        except:
-            await channel.send(f'There was an error. Error log for Dev: ```{traceback.format_exc()}```')
 
 
     @commands.command(aliases=['server', 'realms'])
