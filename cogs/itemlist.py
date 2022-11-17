@@ -187,7 +187,7 @@ class ItemList(commands.Cog, name='Item List'):
                 for item in item_list:
                     # Hardcoded for certain items
                     if item.lower().replace(' ', '') in result.lower() or \
-                            (item == "Kor'kron Shaman's Treasure" and "korikronshamanis" in result.lower()) or \
+                            (item == "Kor'kron Shaman's Treasure" and ("korikronshaman" in result.lower() or "korkronshaman" in result.lower() or "kor'kronshaman" in result.lower())) or \
                             (item == "Valarjar Stormwing" and "valariar" in result.lower()) or \
                             (item == "Clutch of Ji-Kun" and "clutchof" in result.lower()) or \
                             (item == "Reins of the Green Proto-Drake" and "reinsofthegreen" in result.lower()) or \
@@ -200,7 +200,10 @@ class ItemList(commands.Cog, name='Item List'):
                             (item == "Shackled Ur'zul" and "shackledurizul" in result.lower()) or \
                             (item == "Ashes of Al'ar" and "ashesofaliar" in result.lower()) or \
                             (item == "Kor'kron Juggernaut" and "korikronjuggernaut" in result.lower()) or \
-                            (item == "Experiment 12-B" and "experiment12" in result.lower()) :
+                            (item == "Experiment 12-B" and "experiment12" in result.lower()) or \
+                            (item == "Mimiron's Head" and "mimironishead" in result.lower()) or \
+                            (item == "Goblin Gumbo Kettle" and "umbokettle" in result.lower()) or \
+                            (item == "Sun-Lute of the Phoenix King" and "sun-luteofthephoenix" in result.lower()):
                             # item_split = item.lower().split()
                     # if all(x in result.lower() for x in item_split):
                     # ---> Code for if all the words in item name are present in result
