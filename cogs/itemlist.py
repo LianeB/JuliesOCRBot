@@ -433,6 +433,7 @@ class ItemList(commands.Cog, name='Item List'):
 
 
             # Create T3 (Armor) fields
+            fields = 0
             for category, item_dict in ordered_dict.items():
                 item_names = ''
                 server_names = ''
@@ -442,16 +443,22 @@ class ItemList(commands.Cog, name='Item List'):
                     for server, item_list in serverDocument.items():
                         for item_fromServerDoc in item_list:
                             if item.lower() in item_fromServerDoc.lower():
-                                #items += f'🡢 {item} __*({server.capitalize()})*__\n'
                                 item_names += f'{item}\n'
                                 server_names += f'{server.title()}\n'
 
                     if item == last_item:
                         item_names += "\u200b"
                 category_name = emoji_dict[f'{category}'] + " " + category
+                if (fields + 3) >= 25:
+                    await channel.send(embed=embed)
+                    embed = discord.Embed(description="\u200b", color=client.color)
+                    fields = 0
                 embed.add_field(name=category_name, value=item_names, inline=True)
                 embed.add_field(name="Realm", value=server_names, inline=True)
                 embed.add_field(name="\u200b", value="\u200b", inline=True)
+                fields += 3
+
+
 
 
             # Add Misc, Pets, Mounts
@@ -467,20 +474,24 @@ class ItemList(commands.Cog, name='Item List'):
                         for server, item_list in serverDocument.items():
                             for item_fromServerDoc in item_list:
                                 if item.lower() in item_fromServerDoc.lower():
-                                    # items += f'🡢 {item} __*({server.capitalize()})*__\n'
                                     item_names += f'{item}\n'
                                     server_names += f'{server.title()}\n'
 
                         if item == last_item:
                             item_names += "\u200b"
                     category_name = emoji_dict[f'{category}'] + " " + category
+                    if (fields + 3) >= 24:
+                        await channel.send(embed=embed)
+                        embed = discord.Embed(description="\u200b", color=client.color)
+                        fields = 0
                     embed.add_field(name=category_name, value=item_names, inline=True)
                     embed.add_field(name="Realm", value=server_names, inline=True)
                     embed.add_field(name="\u200b", value="\u200b", inline=True)
+                    fields += 3
 
-
-            # await ctx.message.delete()
-            await channel.send(embed=embed)
+            # if 24 pile, has already sent the embed in previous code
+            if fields < 24:
+                await channel.send(embed=embed)
         except:
             await channel.send(f'There was an error. Error log for Dev: ```{traceback.format_exc()}```')
 
