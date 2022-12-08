@@ -244,11 +244,11 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command(aliases=['listservers', 'serverlisting', 'serverlistings', 'serverlists', 'serverrealms'])
-    async def serverlist(self, ctx):
+    async def serverlist(self, ctx, category=None):
         """Shows the list of today's items with the server associated"""
         document = self.client.BMAH_coll.find_one({"name": "todays_items"})
         serverDocument = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
-        await self.list_fct(ctx.guild, ctx.channel, calledWithWithout=False, document=document, client=self.client, withServers=True, serverDocument=serverDocument)
+        await self.list_fct(ctx.guild, ctx.channel, calledWithWithout=False, document=document, client=self.client, withServers=True, serverDocument=serverDocument, withCategory=category)
 
 
     @commands.command(aliases=['items'])
@@ -266,7 +266,7 @@ class ItemList(commands.Cog, name='Item List'):
             await ctx.send(f'There was an error. Error log for Dev: ```{traceback.format_exc()}```')
 
 
-    async def list_fct(self, guild, channel, calledWithWithout, document, client, withServers=False, serverDocument=None):
+    async def list_fct(self, guild, channel, calledWithWithout, document, client, withServers=False, serverDocument=None, withCategory=None):
         def date_suffix(myDate):
             date_suffix = ["th", "st", "nd", "rd"]
 
@@ -317,6 +317,40 @@ class ItemList(commands.Cog, name='Item List'):
             dict_a_part = {}
             for item_name in liste_a_part:
                 dict_a_part[f'{item_name}'] = document[f'{item_name}']
+
+            # if command is ;serverlist <category>
+            if withCategory:
+                items = ''
+                category = withCategory
+                categories1 = [word.lower() for word in ordered_dict.keys()]
+                categories2 = [word.lower() for word in dict_a_part.keys()]
+                if any(category.lower() in word for word in categories1):
+                    for c in ordered_dict.keys():
+                        if category.lower() in c.lower():
+                            embed.title = c
+                            item_dict = ordered_dict[c]
+                            for item, amount in item_dict.items():
+                                # if ;listservers
+                                for server, item_list in serverDocument.items():
+                                    for item_fromServerDoc in item_list:
+                                        if item.lower() in item_fromServerDoc.lower():
+                                            items += f'🡢 {item} __*({server.capitalize()})*__\n'
+                elif any(category.lower() in word for word in categories2):
+                    for c in dict_a_part.keys():
+                        if category.lower() in c.lower():
+                            embed.title = c
+                            item_dict = dict_a_part[c]
+                            for item, amount in item_dict.items():
+                                # if ;listservers
+                                for server, item_list in serverDocument.items():
+                                    for item_fromServerDoc in item_list:
+                                        if item.lower() in item_fromServerDoc.lower():
+                                            items += f'🡢 {item} __*({server.capitalize()})*__\n'
+
+                embed.description = items
+                await channel.send(embed=embed)
+                return
+
 
             # create armor fields
             embed.add_field(name="\u200b", value="\u200b")
