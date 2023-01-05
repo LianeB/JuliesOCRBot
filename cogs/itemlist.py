@@ -82,9 +82,11 @@ class ItemList(commands.Cog, name='Item List'):
     @asyncio.coroutine
     async def auto_wipe(self):
         channel = await self.client.fetch_channel(784660945758584853) # bot-commands channel
+        channel2 = await self.client.fetch_channel(1060070331630493822)  # bmah-secret
         msg = f'⏰‼ ***It is 1:30AM!*** ‼⏰'
         await channel.send(msg)
-        await self.wipe_func(channel)
+        await channel2.send(msg)
+        await self.wipe_func(channel, channel2)
 
 
 
@@ -161,6 +163,16 @@ class ItemList(commands.Cog, name='Item List'):
                 url = input_url
             '''
 
+            # Verify there arent already items scanned in this server today
+            document = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
+            if server.lower() in document.keys():
+                scanned_items = 'diff\n'
+                for item_name, value in document[server.lower()].items():
+                    scanned_items += f'- {item_name}\n'
+                await ctx.send(f":exclamation: There are already items scanned in **{server.title()}:**\n```{scanned_items}```")
+                return
+
+            # Verify an image was sent
             if len(ctx.message.attachments) == 0:
                 await ctx.send("You didn't send any image")
                 return
@@ -169,6 +181,7 @@ class ItemList(commands.Cog, name='Item List'):
             scanning_msg = await ctx.send("Scanning...")
             result = ocr_space_url(url=url)
 
+            # If OCR space API timeout
             if "Timed out waiting for results" in result :
                 await scanning_msg.edit(content="`The service is experiencing latency issues (slow). Please try again in a few minutes.`")
                 return
@@ -496,7 +509,7 @@ class ItemList(commands.Cog, name='Item List'):
         await self.wipe_func(ctx.channel)
 
 
-    async def wipe_func(self, channel):
+    async def wipe_func(self, channel, channel2=None):
         document = self.client.BMAH_coll.find_one({"name": "todays_items"})
         document_servers = self.client.BMAH_coll.find_one({"name": "todays_items_servers"})
 
@@ -514,6 +527,8 @@ class ItemList(commands.Cog, name='Item List'):
         self.last_save = {}
 
         await channel.send("The bot's current list of items has been successfully wiped.")
+        if channel2:
+            await channel.send("The bot's current list of items has been successfully wiped.")
 
 
     @commands.command()
