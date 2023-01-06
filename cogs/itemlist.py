@@ -528,7 +528,7 @@ class ItemList(commands.Cog, name='Item List'):
 
         await channel.send("The bot's current list of items has been successfully wiped.")
         if channel2:
-            await channel.send("The bot's current list of items has been successfully wiped.")
+            await channel2.send("The bot's current list of items has been successfully wiped.")
 
 
     @commands.command()
