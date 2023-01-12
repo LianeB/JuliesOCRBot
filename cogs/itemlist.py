@@ -402,6 +402,7 @@ class ItemList(commands.Cog, name='Item List'):
                 embed.add_field(name="\u200b", value="\u200b")
 
             # Add Misc, Pets, Mounts
+            desc = ''
             if len(dict_a_part) == 0:
                 embed.add_field(name="No Pets, Mounts or Misc items", value="\u200b", inline=True)
             else:
@@ -417,7 +418,11 @@ class ItemList(commands.Cog, name='Item List'):
                         else:
                             items += f'{item} {"(" + str(amount) + ")" if amount > 1 else ""}\n'
                     category_name = emoji_dict[f'{category}'] + " " + category
-                    embed.add_field(name=category_name, value=items, inline=True)
+                    # in case too much text for a field
+                    if len(items) >= 1023:
+                        desc = f'**{category_name}**\n{items}'
+                    else:
+                        embed.add_field(name=category_name, value=items, inline=True)
 
             # skip fields if fields not a multiple of 3
             if (len(dict_a_part)+1) % 3 == 0:
@@ -430,6 +435,8 @@ class ItemList(commands.Cog, name='Item List'):
 
             #await ctx.message.delete()
             await channel.send(embed=embed)
+            if desc:
+                await channel.send(desc)
         except:
             await channel.send(f'There was an error. Error log for Dev: ```{traceback.format_exc()}```')
 
