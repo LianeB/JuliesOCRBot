@@ -21,6 +21,8 @@ from pymongo import MongoClient
 from pytz import timezone
 from views import dbView, confirmView, categoryView
 from cogs import utils
+
+from helpers import utils
 with open("./config.json") as f: configData = json.load(f)
 
 # Development or Production
@@ -257,6 +259,7 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command(aliases=['listservers', 'serverlisting', 'serverlistings', 'serverlists', 'serverrealms'])
+    @utils.has_wowhoes_role()
     async def serverlist(self, ctx, category=None):
         """Shows the list of today's items with the server associated"""
         document = self.client.BMAH_coll.find_one({"name": "todays_items"})
@@ -443,6 +446,7 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command(aliases=['server', 'realms'])
+    @utils.has_wowhoes_role()
     async def servers(self, ctx, *, item_given=None):
         """Shows the list of today's items that were scanned by the bot, classified by server"""
         try:
@@ -511,6 +515,7 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command()
+    @utils.has_wowhoes_role()
     async def wipe(self, ctx):
         """Wipes today's list of items from the database"""
         await self.wipe_func(ctx.channel)
@@ -561,6 +566,7 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command()
+    @utils.has_wowhoes_role()
     async def remove(self, ctx, server, *, item_name):
         """Manually remove 1 of an item from today's item list."""
         document = self.client.BMAH_coll.find_one({"name": "all_items"})
@@ -588,6 +594,7 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command(aliases=['removesave', 'rms'])
+    @utils.has_wowhoes_role()
     async def removelastsave(self, ctx):
         """Deletes the last entry did with the save command"""
 
@@ -686,6 +693,7 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command()
+    @utils.has_wowhoes_role()
     async def dbadd(self, ctx, category, *, item_name):
         """Adds an item to the database to be scanned for"""
         document = self.client.BMAH_coll.find_one({"name": "all_items"})
@@ -717,6 +725,7 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command()
+    @utils.has_wowhoes_role()
     async def dbremove(self, ctx, *, item_name):
         """Removes an item from the database so it doesn't get scanned anymore."""
         document = self.client.BMAH_coll.find_one({"name": "all_items"})
@@ -869,6 +878,7 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command(aliases=['removeprices', 'rmp'])
+    @utils.has_wowhoes_role()
     async def removelastprices(self, ctx):
         """In case of error when entering the prices with 'enterPrices', use this command to wipe the last set of prices entered."""
 
@@ -960,6 +970,7 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command(aliases=['prices', 'p'])
+    @utils.has_wowhoes_role()
     async def price(self, ctx, *, item_name=None):
         """Shows all the past prices an item had, as well as its average and median"""
 
@@ -1138,6 +1149,7 @@ class ItemList(commands.Cog, name='Item List'):
 
 
     @commands.command(aliases=['sp', 'realmprices'])
+    @utils.has_wowhoes_role()
     async def serverprices(self, ctx, *, server):
         """Lists all items and their prices that were recorded for a server"""
         # Create embed
