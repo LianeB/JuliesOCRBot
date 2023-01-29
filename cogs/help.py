@@ -17,7 +17,7 @@ class HelpCog(commands.Cog, name='Help'):
             if hasattr(ctx.command, 'on_error'):
                 return
             elif isinstance(error, commands.MissingAnyRole):
-                await ctx.send(f'{ctx.author.mention} you don\'t have the role to run this command.')
+                # await ctx.send(f'{ctx.author.mention} you don\'t have the role to run this command.')
                 return
             else:
                 embed = discord.Embed(title=f'Error in {ctx.command}',
